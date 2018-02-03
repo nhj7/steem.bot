@@ -1,0 +1,28 @@
+{
+  "name": "steem_nhj",
+  "version": "1.0.0",
+  "description": "Hello Atom!   Hello Steemit! Hello Nodejs!",
+  "main": "app.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nhj12311/steem_nhj.git"
+  },
+  "author": "nhj12311",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nhj12311/steem_nhj/issues"
+  },
+  "homepage": "https://github.com/nhj12311/steem_nhj#readme",
+  "dependencies": {
+    "async": "^2.6.0",
+    "fibers": "^2.0.0",
+    "node-gyp": "^3.6.2",
+    "steem": "^0.6.7",
+    "synchronize": "^2.0.0",
+    "winston": "^2.4.0",
+    "winston-daily-rotate-file": "^1.7.2"
+  }
+}
