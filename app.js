@@ -100,6 +100,7 @@ try {
         // steem 데이터 조회!!
         obj = await(steem.api.getAccounts(['nhj12311'], defer()));
         logger.info(obj);
+        conn.end();
     });
 } catch(err) {
   logger.error(err);
