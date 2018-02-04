@@ -19,6 +19,7 @@
   "dependencies": {
     "async": "^2.6.0",
     "fibers": "^2.0.0",
+    "mysql": "^2.15.0",
     "node-gyp": "^3.6.2",
     "steem": "^0.6.7",
     "synchronize": "^2.0.0",
