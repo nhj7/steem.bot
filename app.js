@@ -39,6 +39,8 @@ var await = sync.await;
 var defer = sync.defer;
 // synchronize init end!
 
+
+
 // init mysql!
 var db_config = {
    // 운영 모드.
@@ -68,13 +70,30 @@ if( process.env.NODE_ENV == 'development' ){
 
 var mysql = require('mysql'); // mysql lib load.
 // mysql create connection!!
-var conn = mysql.createConnection({
-        host: db_config.host,
-        port: db_config.port,
-        user: db_config.user,
-        password: db_config.password,
-        database: db_config.database
-});
+var conn;
+
+function createConnect() {
+  conn = mysql.createConnection(db_config);
+  conn.connect(function(err) {
+    if(err) {
+      logger.error('error when connecting to db:', err);
+      setTimeout(createConnect, 2000);
+    }
+    setInterval(function () {
+        conn.query('SELECT 1');
+    }, 60000);
+  });
+  conn.on('error', function(err) {
+    logger.error('db error', err);
+    if(err.code === 'PROTOCOL_CONNECTION_LOST') {
+      createConnect();
+    } else {
+      throw err;
+    }
+  });
+}
+
+createConnect();
 
 // steem init!
 var steem = require("steem")
@@ -97,81 +116,177 @@ steem.api.setOptions({url: 'https://api.steemit.com'});
 // logger.info(queryResult);
 
 //conn.end(); // db end
-
-try {
-    fiber(function() {
-        logger.info( "steem init!!" );
-        var obj = await( conn.connect( defer() ));
-        // steem 데이터 조회!!
-        //obj = await(steem.api.getAccounts(['nhj12311'], defer()));
-        var lastBlockNumber = 0;
-        var workBlockNumber = 0;
-        var startChk = false;
-        //console.log(steem.api);
-        var release = steem.api.streamBlockNumber('head',function(err, blockNumber){
-          lastBlockNumber = blockNumber;
-          while( lastBlockNumber > workBlockNumber ){
-            if( workBlockNumber == 0 ){
-              // 이 부분은 향후 workBlockNumber DB 데이터로 초기화
-              workBlockNumber = lastBlockNumber;
-            }else{
-                workBlockNumber++;
-            }
-            //logger.info( 'lastBlockNumber : ' + lastBlockNumber + ", workBlockNumber : " + workBlockNumber);
-            fiber(function() {
-              var block = await( steem.api.getBlock(workBlockNumber, defer()) );
-              for(var txIdx = 0; txIdx < block.transactions.length; txIdx++ ){
-                for(var opIdx = 0; opIdx < block.transactions[txIdx].operations.length; opIdx++ ){
-                  var operation = block.transactions[txIdx].operations[opIdx];
-                  // 리스팀을 인식하는 부분.
-                  if( "custom_json" == operation[0] ){
-                      if( operation[1].json ){
-                        var custom_json = JSON.parse(operation[1].json);
-                        if( "reblog" == custom_json[0] || "resteem" == custom_json[0] ){
-                            logger.info( custom_json );
-                        }
-                      }
-
-                  }// if( "custom_json" == operation[0] ){
-                  // 포스팅과 댓글은 comment
-                  else if( "comment" == operation[0] ){
-                    if( operation[1].parent_author != ""){
-                        if( operation[1].body.includes( [ "@리스팀" ] ) ){
-                            logger.info( "@" + operation[1].author + " : " + operation[1].body);
-                            var useYn = "";
-                            if( operation[1].body.indexOf( ["@리스팀 켬", "@리스팀켬", "@리스팀 on"] ) ){
-                              useYn = "Y";
-                            }else if( operation[1].body.includes( ["@리스팀 끔", "@리스팀끔", "@리스팀 off"] ) ){
-                              useYn = "N";
-                            }else{
-                              // 없으면 넘김.
-                              logger.info("comment continue");
-                              continue;
-                            }
-                            // dvcd : 첫번째 서비스인 리스팀 알림 서비스번호는 1번으로.
-                            var selQry = "select * from svc_acct_mng where dvcd = 1 and acct_nm = '"+ operation[1].author +"' ";
-                            logger.info("selQry : " + selQry);
-                            var selRslt = await(conn.query(selQry, defer() ));
-                            logger.info(selRslt);
-                            // 있으면 업데이트
-                            if( selRslt.length > 0 ){
-                              var upQry = "update svc_acct_mng set use_yn = '"+ useYn +"' where dvcd = 1 and acct_nm = '"+ operation[1].author +"' ";
-                              logger.info("upQry : " + upQry);
-                            }else{  // 없으면 등록!!!
-                              var inQry = "insert into svc_acct_mng ( dvcd, acct_nm, perm_link, use_yn ) values (1, '"+ operation[1].author +"', '', '"+useYn+"' ) ";
-                              logger.info("inQry : " + inQry);
-                            }
-
-                        }
-                    }
-                  } // else if( "comment" == operation[0] ){
-                } // for operations
-              } // for transactions
-            }); // fiber
-          } // if( lastBlockNumber > workBlockNumber ){
-        }); // streamBlockNumber.
-    });
-} catch(err) {
-  logger.error(err);
+if (typeof String.prototype.contains === 'undefined') {
+  String.prototype.contains = function(obj) {
+    if (Array.isArray(obj)) {
+      return obj.some(x => this.indexOf(x) > -1);
+    }
+    return this.indexOf(obj) != -1;
+  }
 }
-//release();
+
+
+fiber(function() {
+try {
+    logger.info( "steem init!!" );
+    // steem 데이터 조회!!
+    //obj = await(steem.api.getAccounts(['nhj12311'], defer()));
+    var lastBlockNumber = 0;
+    var workBlockNumber = 0;
+    var startChk = false;
+    //console.log(steem.api);
+    var release = steem.api.streamBlockNumber('head',function(err, blockNumber){
+
+      lastBlockNumber = blockNumber;
+      while( lastBlockNumber > workBlockNumber ){
+        if( workBlockNumber == 0 ){
+          // 이 부분은 향후 workBlockNumber DB 데이터로 초기화
+          workBlockNumber = lastBlockNumber;
+        }else{
+            workBlockNumber++;
+        }
+        //logger.info( 'lastBlockNumber : ' + lastBlockNumber + ", workBlockNumber : " + workBlockNumber);
+
+        fiber(function() {
+        try {
+          var block = await( steem.api.getBlock(workBlockNumber, defer()) );
+          if( block.transactions )
+          for(var txIdx = 0; txIdx < block.transactions.length; txIdx++ ){
+            for(var opIdx = 0; opIdx < block.transactions[txIdx].operations.length; opIdx++ ){
+              var operation = block.transactions[txIdx].operations[opIdx];
+              // 리스팀을 인식하는 부분.
+              if( "custom_json" == operation[0] ){
+                  if( operation[1].json ){
+                    var custom_json = JSON.parse(operation[1].json);
+                    if( "reblog" == custom_json[0] || "resteem" == custom_json[0] ){
+                        logger.info( custom_json );
+                        var selQry = "select * from svc_acct_mng where dvcd = 1 and use_yn = 'Y' and acct_nm = '"+custom_json[1].author+"' ";
+                        logger.info( "selQry : "+selQry );
+                        var selRslt = await(conn.query(selQry, defer() ));
+                        if( selRslt.length > 0 ){
+                          var comment = "@" + custom_json[1].account + "님께서 이 포스팅에 많은 관심을 가지고 있어요. 리스팀을 해주셨군요~! " ;
+                          var inQry = "insert into bot_wrk_list "
+                            + "(dvcd, author, perm_link, comment, wrk_status, vote_yn ) "
+                            + "values( ?, ?, ?, ?, ?, ?) ";
+                          var params = [
+                              1  // dvcd
+                              , custom_json[1].author // author
+                              , custom_json[1].permlink // permlink
+                              , comment // comment
+                              , "1" // wrk_status 0:complete, 1:ready, 9:error
+                              , "N" // vote_yn
+                          ];
+                          var inRslt = await(conn.query(inQry, params, defer() ));
+                          logger.info(inRslt);
+                        }
+                    } // if( reblog )
+                  }
+
+              }// if( "custom_json" == operation[0] ){
+              // 포스팅과 댓글은 comment
+              else if( "comment" == operation[0] ){
+                if( operation[1].parent_author != ""){
+                    if( operation[1].body.includes( [ "@리스팀" ] ) ){
+                        logger.info( "@" + operation[1].author + " : " + operation[1].body);
+                        var useYn = "";
+                        if( operation[1].body.contains( ["@리스팀 켬", "@리스팀켬", "@리스팀 on"] ) ){
+                          useYn = "Y";
+                        }else if( operation[1].body.contains( ["@리스팀 끔", "@리스팀끔", "@리스팀 off"] ) ){
+                          useYn = "N";
+                        }else{
+                          // 없으면 넘김.
+                          logger.info("comment continue");
+                          continue;
+                        }
+                        // dvcd : 첫번째 서비스인 리스팀 알림 서비스번호는 1번으로.
+                        var selQry = "select * from svc_acct_mng where dvcd = 1 and acct_nm = '"+ operation[1].author +"' ";
+                        logger.info("selQry : " + selQry);
+                        var selRslt = await(conn.query(selQry, defer() ));
+                        logger.info(selRslt);
+                        var regQry = "";
+                        // 있으면 업데이트
+                        if( selRslt.length > 0 ){
+                          regQry = "update svc_acct_mng set use_yn = '"+ useYn +"' , perm_link = '" + operation[1].permlink + "' where dvcd = 1 and acct_nm = '"+ operation[1].author +"' ";
+                        }else{  // 없으면 등록!!!
+                          regQry = "insert into svc_acct_mng ( dvcd, acct_nm, perm_link, use_yn ) values (1, '"+ operation[1].author +"', '" + operation[1].permlink + "', '"+useYn+"' ) ";
+                        }
+                        logger.info("regQry : " + regQry);
+                        var regRslt = await(conn.query(regQry, defer() ));
+                        logger.info(regRslt);
+
+                        var comment = "리스팀 서비스가 " +  ( useYn == "Y" ? "등록되었습니다." : "해제되었습니다." );
+                        var inQry = "insert into bot_wrk_list "
+                          + "(dvcd, author, perm_link, comment, wrk_status, vote_yn ) "
+                          + "values( ?, ?, ?, ?, ?, ?) ";
+                        var params = [
+                            1  // dvcd
+                            , operation[1].author // author
+                            , operation[1].permlink // permlink
+                            , comment // comment
+                            , "1" // wrk_status 0:complete, 1:ready, 9:error
+                            , "N" // vote_yn
+                        ];
+                        var inRslt = await(conn.query(inQry, params, defer() ));
+                        logger.info(inRslt);
+                    }
+                }
+              } // else if( "comment" == operation[0] ){
+            } // for operations
+          } // for transactions
+        }// try
+        catch(err) {
+          logger.error(err);
+        }
+        }); // fiber
+      } // if( lastBlockNumber > workBlockNumber ){
+
+    }); // streamBlockNumber.
+  } catch(err) {
+    logger.error(err);
+  }
+});
+
+
+var Fiber = require('fibers');
+
+function sleep(ms) {
+    var fiber = Fiber.current;
+    setTimeout(function() {
+        fiber.run();
+    }, ms);
+    Fiber.yield();
+}
+
+
+
+function wrkBot(){
+  fiber(function() {
+  try{
+  while(true){
+      //logger.info("while");
+      if( conn.state == 'authenticated'){
+          try{
+            var selWrkQry = " select * from bot_wrk_list where wrk_status <> 0 ";
+            var wrkList = await(conn.query(selWrkQry, [], defer() ));
+            logger.info(wrkList);
+          }catch(err){
+            logger.error("wrkBot error : ", err);
+          }
+      }else{
+        logger.error("conn.state : "+conn.state);
+      }
+      sleep(1500);
+  } // while
+  }catch(err){
+    logger.error("wrkBot err : ", err);
+    sleep(1500);
+  }
+  }); // fiber(function() {
+
+};
+
+
+wrkBot();
+
+logger.info("end.");
+//setInterval(function(){wrkBot()}, 3000);
