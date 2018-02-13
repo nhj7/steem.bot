@@ -102,20 +102,8 @@ steem.api.setOptions({url: 'https://api.steemit.com'});
 
 // 실제 DB에 연결.
 
-//logger.info("connected.");
-//logger.info(obj);
-
-// // select 조회 쿼리!
-// var queryResult = await(conn.query("select * from test", defer() ));
-// logger.info(queryResult);
-// // 테스트 데이터! 등록
-// queryResult = await(conn.query("insert into test values(1, 'nhj12311!');", defer() ));
-// logger.info(queryResult);
-// // 등록 후 다시 조회!!
-// queryResult = await(conn.query("select * from test", defer() ));
-// logger.info(queryResult);
-
 //conn.end(); // db end
+
 if (typeof String.prototype.contains === 'undefined') {
   String.prototype.contains = function(obj) {
     if (Array.isArray(obj)) {
@@ -124,7 +112,6 @@ if (typeof String.prototype.contains === 'undefined') {
     return this.indexOf(obj) != -1;
   }
 }
-
 
 fiber(function() {
 try {
@@ -186,12 +173,12 @@ try {
               // 포스팅과 댓글은 comment
               else if( "comment" == operation[0] ){
                 if( operation[1].parent_author != ""){
-                    if( operation[1].body.includes( [ "@리스팀" ] ) ){
+                    if( operation[1].body.contains( [ "@리스팀", "@resteem" ] ) ){
                         logger.info( "@" + operation[1].author + " : " + operation[1].body);
                         var useYn = "";
-                        if( operation[1].body.contains( ["@리스팀 켬", "@리스팀켬", "@리스팀 on"] ) ){
+                        if( operation[1].body.contains( ["@리스팀 켬", "@리스팀켬", "@리스팀 on", "@resteem on"] ) ){
                           useYn = "Y";
-                        }else if( operation[1].body.contains( ["@리스팀 끔", "@리스팀끔", "@리스팀 off"] ) ){
+                        }else if( operation[1].body.contains( ["@리스팀 끔", "@리스팀끔", "@리스팀 off", "@resteem off"] ) ){
                           useYn = "N";
                         }else{
                           // 없으면 넘김.
@@ -214,7 +201,7 @@ try {
                         var regRslt = await(conn.query(regQry, defer() ));
                         logger.info(regRslt);
 
-                        var comment = "리스팀 서비스가 " +  ( useYn == "Y" ? "등록되었습니다." : "해제되었습니다." );
+                        var comment = "리스팀 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니다." : "해제되었습니다." );
                         var inQry = "insert into bot_wrk_list "
                           + "(dvcd, author, perm_link, comment, wrk_status, vote_yn ) "
                           + "values( ?, ?, ?, ?, ?, ?) ";
@@ -257,36 +244,69 @@ function sleep(ms) {
     Fiber.yield();
 }
 
-
+var sleepTm = 1000;
 
 function wrkBot(){
   fiber(function() {
   try{
-  while(true){
-      //logger.info("while");
-      if( conn.state == 'authenticated'){
-          try{
-            var selWrkQry = " select * from bot_wrk_list where wrk_status <> 0 ";
-            var wrkList = await(conn.query(selWrkQry, [], defer() ));
-            logger.info(wrkList);
-          }catch(err){
-            logger.error("wrkBot error : ", err);
-          }
-      }else{
-        logger.error("conn.state : "+conn.state);
+  //for(var loopCnt = 0; true ;loopCnt++ ){
+      sleep(sleepTm);
+      if( conn.state != 'authenticated'){
+        return;
       }
-      sleep(1500);
-  } // while
+      var chk = true;
+      logger.info("wrkBot execute." );
+
+      try{
+        var selWrkQry = " select * from bot_wrk_list where wrk_status <> 0 order by seq asc ";
+        var wrkList = await(conn.query(selWrkQry, [], defer() ));
+
+        if( wrkList == null || wrkList.length <= 0 ){
+          return;
+        }
+        var selBotQry = "select * from bot_acct_mng "
+          + " where 1=1 "
+          + " and instr(arr_dvcd, ?) > 0 "
+          + " and last_comment_dttm < DATE_ADD(now(), INTERVAL -20 second) "
+          + " order by last_comment_dttm asc ";
+
+        var botList = await(conn.query(selBotQry, [ 1 ], defer() ));
+        if( botList == null && botList.length <= 0 ){
+          return;
+        }
+        for(var i = 0; i < wrkList.length && i < botList.length ;i++){
+          logger.info(i +" : "+ JSON.stringify(botList[i]));
+          logger.info(i +" : "+ JSON.stringify(wrkList[i]));
+          var wif = botList[i].posting_key;
+          var author = botList[i].id;
+          var parentAuthor = wrkList[i].author;
+          var parentPermlink = wrkList[i].perm_link;
+          var permlink = steem.formatter.commentPermlink(parentAuthor, parentPermlink);
+          var title = "";
+          var body = wrkList[i].comment;
+          var jsonMetadata = {};
+
+          var commentRslt = await(steem.broadcast.comment(wif, parentAuthor, parentPermlink, author, permlink, title, body, jsonMetadata,defer() ));
+          logger.error(commentRslt);
+
+          var botUpQry = "update bot_acct_mng set last_comment_dttm = now() where seq = ? and id = ? " ;
+          var botUpRslt = await(conn.query(botUpQry, [ botList[i].seq, botList[i].id ], defer() ));
+
+          var wrkUpQry = "update bot_wrk_list set wrk_status = 0, wrk_dttm = now() where seq = ?" ;
+          var wrkUpRslt = await(conn.query(wrkUpQry, [ wrkList[i].seq  ], defer() ));
+        }
+      }catch(err){
+        logger.error("wrkBot error : ", err);
+        throw err;
+      }
   }catch(err){
     logger.error("wrkBot err : ", err);
-    sleep(1500);
+    sleep(sleepTm);
+  }finally{
+    setImmediate(function(){wrkBot()});
   }
   }); // fiber(function() {
-
-};
-
+};  // wrkBot function end
 
 wrkBot();
-
 logger.info("end.");
-//setInterval(function(){wrkBot()}, 3000);
