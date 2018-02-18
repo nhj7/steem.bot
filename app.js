@@ -3,27 +3,37 @@
 var winston = require('winston');
 require('winston-daily-rotate-file');
 const tsFormat = () => (new Date()).toLocaleTimeString();
+
+console.log("tsFormat : " + tsFormat);
+
 var logger = new (winston.Logger)({
    transports: [
      new (winston.transports.Console)({ timestamp: tsFormat }),
      new (winston.transports.DailyRotateFile)({
           // filename property 지정
           name : 'log'
-          , filename: '/log/log.log'
-          , datePattern: '.yyyy-MM-dd'
+          , filename: '/log/console.log'
+          , datePattern: '.yyyy.MM.dd'
           , prepend: false
           , timestamp: tsFormat
           , level: 'info'
           , json:false
+          , localTime : true
+          , maxDays: 10
+          , maxFiles: 7
+
       }),
      new (winston.transports.DailyRotateFile)({
          name : 'error_log'
          , filename: '/log/error.log'
-         , datePattern: '.yyyy-MM-dd'
+         , datePattern: '.yyyy.MM.dd'
          , prepend: false
          , timestamp: tsFormat
          , level : 'error'
          , json:false
+         , localTime : true
+         , maxDays: 10
+         , maxFiles: 7
      })
    ]
 });
