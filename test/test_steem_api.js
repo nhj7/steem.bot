@@ -17,7 +17,7 @@ var arrNode = [
 ];
 var idxNode = 0;
 steem.api.setOptions({url: arrNode[idxNode] });
-console.log(arrNode);
+console.log(arrNode[idxNode]);
 
 
 var Fiber = require('fibers');

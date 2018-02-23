@@ -1,3 +1,12 @@
+// custom function create.
+if (typeof String.prototype.contains === 'undefined') {
+  String.prototype.contains = function(obj) {
+    if (Array.isArray(obj)) {
+      return obj.some(x => this.indexOf(x) > -1);
+    }
+    return this.indexOf(obj) != -1;
+  }
+}
 
 // winston log init!
 var winston = require('winston');
@@ -92,6 +101,7 @@ function createConnect() {
     setInterval(function () {
         conn.query('SELECT 1');
     }, 60000);
+    startBot();
   });
   conn.on('error', function(err) {
     logger.error('db error', err);
@@ -103,26 +113,87 @@ function createConnect() {
   });
 }
 
-createConnect();
+
 
 // steem init!
-var steem = require("steem")
-steem.api.setOptions({url: 'https://api.steemit.com'});
+var steem = require("steem");
+var arrNode = [
+  'https://api.steemit.com'
+  ,'https://steemd.dist.one'
+  //,'https://rpc.dist.one'
+  ,'https://steemd-int.steemit.com'
+  ,'https://steemd.steemitstage.com'
+  ,'https://api.steemitstage.com'
+  //,'https://steemd.pevo.science'
+];
+var idxNode = 0;
+steem.api.setOptions({url: arrNode[idxNode] });
+
 // steem init! end
 
 // 실제 DB에 연결.
-
-//conn.end(); // db end
-
-if (typeof String.prototype.contains === 'undefined') {
-  String.prototype.contains = function(obj) {
-    if (Array.isArray(obj)) {
-      return obj.some(x => this.indexOf(x) > -1);
+var cntNodeErr = 0;
+var stnrNodeErr = 3;
+function rotateNode(){
+  if( cntNodeErr >= stnrNodeErr ){
+    if( arrNode.length == idxNode+1){
+      idxNode = 0;
+    }else{
+      idxNode++;
     }
-    return this.indexOf(obj) != -1;
+    steem.api.setOptions({url: arrNode[idxNode] });
+    cntNodeErr = 0;
   }
 }
 
+var Fiber = require('fibers');
+
+function sleep(ms) {
+    var fiber = Fiber.current;
+    setTimeout(function() {
+        fiber.run();
+    }, ms);
+    Fiber.yield();
+}
+
+function getTopParentInfo(author, permlink){
+  var cntWhile = 0;
+  while( true ){
+    var result = await(steem.api.getContent(author, permlink, defer()));
+    console.log( ++cntWhile + " : " + permlink );
+    if( result.parent_author == ""){
+      break;
+    }
+    author = result.parent_author;
+    permlink = result.parent_permlink;
+  }
+  return {
+    author : author
+    , permlink : permlink
+  };
+}
+
+function insertWrkList(author, permlink, comment){
+  var inQry = "insert into bot_wrk_list "
+    + "(dvcd, author, perm_link, comment, wrk_status, vote_yn ) "
+    + "values( ?, ?, ?, ?, ?, ?) ";
+  var params = [
+      1  // dvcd
+      , author // author
+      , permlink // permlink
+      , comment // comment
+      , "1" // wrk_status 0:complete, 1:ready, 9:error
+      , "N" // vote_yn
+  ];
+  var inRslt = await(conn.query(inQry, params, defer() ));
+  logger.info(inRslt);
+}
+
+
+var sleepTm = 1000;
+var pc = "@"; // pre command
+var nl = "\r\n";  // new line
+function blockBot(){
 fiber(function() {
 try {
     logger.info( "steem init!!" );
@@ -133,7 +204,21 @@ try {
     var startChk = false;
     //console.log(steem.api);
     var release = steem.api.streamBlockNumber('head',function(err, blockNumber){
+      fiber(function() {
+      if( err != null ){  // 에러가 나는 경우
+        cntNodeErr++;
+        logger.error(err);
+        logger.error("반환 처리 : "+blockNumber);
+        release(); // 반환하고
+        logger.error("sleep " + sleepTm + "ms");
+        sleep(sleepTm);
+        rotateNode();
+        logger.error("설정 노드 : " + arrNode[idxNode] +" blockBot 실행!");
+        blockBot();
+        return;
+      }
 
+      cntNodeErr = 0;
       lastBlockNumber = blockNumber;
       while( lastBlockNumber > workBlockNumber ){
         if( workBlockNumber == 0 ){
@@ -144,7 +229,7 @@ try {
         }
         //logger.info( 'lastBlockNumber : ' + lastBlockNumber + ", workBlockNumber : " + workBlockNumber);
 
-        fiber(function() {
+
         try {
           var block = await( steem.api.getBlock(workBlockNumber, defer()) );
           if( block.transactions )
@@ -155,7 +240,7 @@ try {
               if( "custom_json" == operation[0] ){
                   if( operation[1].json ){
                     var custom_json = JSON.parse(operation[1].json);
-                    if( "reblog" == custom_json[0] || "resteem" == custom_json[0] ){
+                    if( "reblog" == custom_json[0] ){
                         logger.info( custom_json );
                         var selQry = "select * from svc_acct_mng where dvcd = 1 and use_yn = 'Y' and acct_nm = '"+custom_json[1].author+"' ";
                         logger.info( "selQry : "+selQry );
@@ -183,12 +268,38 @@ try {
               // 포스팅과 댓글은 comment
               else if( "comment" == operation[0] ){
                 if( operation[1].parent_author != ""){
-                    if( operation[1].body.contains( [ "@리스팀", "@resteem" ] ) ){
+                    if( operation[1].body.contains( [ pc + "리스팀", pc + "resteem"] ) ){
                         logger.info( "@" + operation[1].author + " : " + operation[1].body);
                         var useYn = "";
-                        if( operation[1].body.contains( ["@리스팀 켬", "@리스팀켬", "@리스팀 on", "@resteem on"] ) ){
+
+                        // 리스팀 리스트 start
+                        if( operation[1].body.contains( [ pc + "리스팀 리스트", pc + "리스팀 목록", pc + "리스팀리스트", , pc + "리스팀목록"] ) ){
+                          var postInfo = getTopParentInfo(operation[1].author, operation[1].permlink);
+                          console.log(postInfo);
+                          var result = await(steem.api.getRebloggedBy(postInfo.author, postInfo.permlink, defer()));
+                          console.log(result);
+                          var idxAuthor = result.indexOf( postInfo.author );
+                          result.splice( idxAuthor , 1 );
+                          var cmntReLst = "이 글을 리스팀 해주신 소중한 분들입니다. "+nl;
+                          cmntReLst += "리스팀 목록 | "+nl;
+                          cmntReLst += "-| "+nl;
+                          for(var idx = 0; idx < result.length;idx++){
+                            cmntReLst += "@"+result[idx]+"| " + nl;
+                          }
+                          if( result.length == 0 ){
+                            cmntReLst = "아직 리스팀 해주신 분들이 없네요. ㅠㅠ 너무 실망하지 말고 힘내세요.";
+                          }
+                          console.log(cmntReLst);
+                          insertWrkList(operation[1].author, operation[1].permlink, cmntReLst);
+
+                          return;
+                        }
+                        // 리스팀 리스트 end
+
+                        // 리스팀 on, off 등록 start
+                        if( operation[1].body.contains( [pc+"리스팀 켬", pc+"리스팀켬", pc+"리스팀 on", pc+"resteem on"] ) ){
                           useYn = "Y";
-                        }else if( operation[1].body.contains( ["@리스팀 끔", "@리스팀끔", "@리스팀 off", "@resteem off"] ) ){
+                        }else if( operation[1].body.contains( [pc+"리스팀 끔", pc+"리스팀끔", pc+"리스팀 off", pc+"resteem off"] ) ){
                           useYn = "N";
                         }else{
                           // 없으면 넘김.
@@ -212,19 +323,8 @@ try {
                         logger.info(regRslt);
 
                         var comment = "리스팀 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니다." : "해제되었습니다." );
-                        var inQry = "insert into bot_wrk_list "
-                          + "(dvcd, author, perm_link, comment, wrk_status, vote_yn ) "
-                          + "values( ?, ?, ?, ?, ?, ?) ";
-                        var params = [
-                            1  // dvcd
-                            , operation[1].author // author
-                            , operation[1].permlink // permlink
-                            , comment // comment
-                            , "1" // wrk_status 0:complete, 1:ready, 9:error
-                            , "N" // vote_yn
-                        ];
-                        var inRslt = await(conn.query(inQry, params, defer() ));
-                        logger.info(inRslt);
+                        insertWrkList( operation[1].author, operation[1].permlink, comment);
+                        // 리스팀 on, off 등록 end
                     }
                 }
               } // else if( "comment" == operation[0] ){
@@ -234,27 +334,16 @@ try {
         catch(err) {
           logger.error(err);
         }
-        }); // fiber
-      } // if( lastBlockNumber > workBlockNumber ){
 
+      } // while
+      }); // fiber
     }); // streamBlockNumber.
   } catch(err) {
     logger.error(err);
   }
-});
+}); // fiber
+} // function blockBot(){
 
-
-var Fiber = require('fibers');
-
-function sleep(ms) {
-    var fiber = Fiber.current;
-    setTimeout(function() {
-        fiber.run();
-    }, ms);
-    Fiber.yield();
-}
-
-var sleepTm = 1000;
 
 function wrkBot(){
   fiber(function() {
@@ -318,5 +407,17 @@ function wrkBot(){
   }); // fiber(function() {
 };  // wrkBot function end
 
-wrkBot();
+
 logger.info("end.");
+
+process.on('exit', function(code) {
+  console.log('server exit', code);
+  conn.close();
+});
+
+function startBot(){
+  blockBot();
+  wrkBot();
+}
+
+createConnect();
