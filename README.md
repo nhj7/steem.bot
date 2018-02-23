@@ -8,4 +8,4 @@
 
 2\. 멘션 알림 기능을 추가중입니다.
 
-[@nhj12311](https://steemit.com/@nhj12311)
+[steemit blog @nhj12311](https://steemit.com/@nhj12311)
