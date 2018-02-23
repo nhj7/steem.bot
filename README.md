@@ -8,5 +8,4 @@
 
 2\. 멘션 알림 기능을 추가중입니다.
 
-
-<a href="https://steemit.com/@nhj12311" target='_blank'>@nhj12311</a>
+['@nhj12311'](https://steemit.com/@nhj12311){: .btn.btn-default target="_blank" }
