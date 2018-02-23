@@ -5,6 +5,7 @@ var await = sync.await;
 var defer = sync.defer;
 // synchronize init end!
 
+
 var steem = require("steem")
 var arrNode = [
   'https://api.steemit.com'

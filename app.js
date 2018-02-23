@@ -291,7 +291,6 @@ try {
                           }
                           console.log(cmntReLst);
                           insertWrkList(operation[1].author, operation[1].permlink, cmntReLst);
-
                           return;
                         }
                         // 리스팀 리스트 end

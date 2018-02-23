@@ -8,6 +8,7 @@ var arrNode = [
   //,'https://api.steemitstage.com'
   //,'https://steemd.pevo.science'
 ];
+
 var idxNode = 0;
 steem.api.setOptions({url: arrNode[idxNode] });
 console.log(steem.api);

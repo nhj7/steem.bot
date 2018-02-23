@@ -48,6 +48,7 @@ function getTopParentContentReplies(author, permlink){
   var result = await(steem.api.getContentReplies(parentInfo.author, parentInfo.permlink, defer()));
   return result;
 }
+
 var nl = "\r\n";
 fiber(function() {
   var author = 'nhj12311';
