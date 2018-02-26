@@ -192,6 +192,7 @@ function insertWrkList(author, permlink, comment){
 
 var sleepTm = 1000;
 var pc = "@"; // pre command
+var epc = "!"; // pre command
 var nl = "\r\n";  // new line
 function blockBot(){
 fiber(function() {
@@ -268,12 +269,12 @@ try {
               // 포스팅과 댓글은 comment
               else if( "comment" == operation[0] ){
                 if( operation[1].parent_author != ""){
-                    if( operation[1].body.contains( [ pc + "리스팀", pc + "resteem"] ) ){
+                    if( operation[1].body.contains( [ pc + "리스팀", epc + "resteem"] ) ){
                         logger.info( "@" + operation[1].author + " : " + operation[1].body);
                         var useYn = "";
 
                         // 리스팀 리스트 start
-                        if( operation[1].body.contains( [ pc + "리스팀 리스트", pc + "리스팀 목록", pc + "리스팀리스트", , pc + "리스팀목록"] ) ){
+                        if( operation[1].body.contains( [ pc + "리스팀 리스트", pc + "리스팀 목록", pc + "리스팀리스트", epc + "resteem list" , pc + "리스팀목록"] ) ){
                           var postInfo = getTopParentInfo(operation[1].author, operation[1].permlink);
                           console.log(postInfo);
                           var result = await(steem.api.getRebloggedBy(postInfo.author, postInfo.permlink, defer()));
@@ -284,7 +285,7 @@ try {
                           cmntReLst += "리스팀 목록 | "+nl;
                           cmntReLst += "-| "+nl;
                           for(var idx = 0; idx < result.length;idx++){
-                            cmntReLst += "@"+result[idx]+"| " + nl;
+                            cmntReLst += "["+result[idx]+"](https://steeemit.com/@)"+result[idx]+"| " + nl;
                           }
                           if( result.length == 0 ){
                             cmntReLst = "아직 리스팀 해주신 분들이 없네요. ㅠㅠ 너무 실망하지 말고 힘내세요.";
@@ -296,9 +297,9 @@ try {
                         // 리스팀 리스트 end
 
                         // 리스팀 on, off 등록 start
-                        if( operation[1].body.contains( [pc+"리스팀 켬", pc+"리스팀켬", pc+"리스팀 on", pc+"resteem on"] ) ){
+                        if( operation[1].body.contains( [pc+"리스팀 켬", pc+"리스팀 등록", pc+"리스팀 on", epc+"resteem on"] ) ){
                           useYn = "Y";
-                        }else if( operation[1].body.contains( [pc+"리스팀 끔", pc+"리스팀끔", pc+"리스팀 off", pc+"resteem off"] ) ){
+                        }else if( operation[1].body.contains( [pc+"리스팀 끔", pc+"리스팀 해제", pc+"리스팀 off", epc+"resteem off"] ) ){
                           useYn = "N";
                         }else{
                           // 없으면 넘김.
