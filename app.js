@@ -46,9 +46,9 @@ var logger = new (winston.Logger)({
      })
    ]
 });
-//logger.log('info', 'log!!!');
-//logger.info('info');
-//logger.error('error logs');
+logger.log('info', 'log!!!');
+logger.info('info');
+logger.error('error logs');
 // winston log init end.
 
 // synchronize init!
@@ -160,7 +160,7 @@ function getTopParentInfo(author, permlink){
   var cntWhile = 0;
   while( true ){
     var result = await(steem.api.getContent(author, permlink, defer()));
-    console.log( ++cntWhile + " : " + permlink );
+    //console.log( ++cntWhile + " : " + permlink );
     if( result.parent_author == ""){
       break;
     }
@@ -195,9 +195,9 @@ var pc = "@"; // pre command
 var epc = "!"; // pre command
 var nl = "\r\n";  // new line
 function blockBot(){
-fiber(function() {
+
 try {
-    logger.info( "steem init!!" );
+    logger.info( "steem init!" );
     // steem 데이터 조회!!
     //obj = await(steem.api.getAccounts(['nhj12311'], defer()));
     var lastBlockNumber = 0;
@@ -341,7 +341,7 @@ try {
   } catch(err) {
     logger.error(err);
   }
-}); // fiber
+
 } // function blockBot(){
 
 
@@ -414,6 +414,13 @@ process.on('exit', function(code) {
   console.log('server exit', code);
   conn.close();
 });
+
+process.on('uncaughtException', function(err) {
+    console.log('server uncaughtException', err);
+    process.exit(1);
+
+});
+
 
 function startBot(){
   blockBot();
