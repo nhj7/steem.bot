@@ -284,7 +284,7 @@ try {
                           cmntReLst += "리스팀 목록 | "+nl;
                           cmntReLst += "-| "+nl;
                           for(var idx = 0; idx < result.length;idx++){
-                            cmntReLst += "["+result[idx]+"](https://steeemit.com/@)"+result[idx]+"| " + nl;
+                            cmntReLst += "["+result[idx]+"](https://steeemit.com/@"+result[idx]+")| " + nl;
                           }
                           if( result.length == 0 ){
                             cmntReLst = "아직 리스팀 해주신 분들이 없네요. ㅠㅠ 너무 실망하지 말고 힘내세요.";
