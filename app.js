@@ -8,6 +8,15 @@ if (typeof String.prototype.contains === 'undefined') {
   }
 }
 
+function toSqlArr(arr){
+  var tmpArr = new Array(arr.length);
+  for(var i = 0; i < arr.length;i++){
+    tmpArr[i] = JSON.stringify(arr[i]);
+  }
+  return tmpArr.join();
+}
+// custom function create end.
+
 // winston log init!
 var winston = require('winston');
 require('winston-daily-rotate-file');
@@ -188,6 +197,47 @@ function insertWrkList(author, permlink, comment){
   logger.info(inRslt);
 }
 
+function mergeSvcAcctMng(dvcd, acct_nm, perm_link, useYn){
+  var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
+  logger.info("selQry : " + selQry);
+  var selRslt = await(conn.query(selQry, defer() ));
+  logger.info(selRslt);
+  var regQry = "";
+  // 있으면 업데이트
+  if( selRslt.length > 0 ){
+    regQry = "update svc_acct_mng set use_yn = '"+ useYn +"' , perm_link = '" + perm_link + "' where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
+  }else{  // 없으면 등록!!!
+    regQry = "insert into svc_acct_mng ( dvcd, acct_nm, perm_link, use_yn ) values ("+dvcd+", '"+ acct_nm +"', '" + perm_link + "', '"+useYn+"' ) ";
+  }
+  logger.info("regQry : " + regQry);
+  var regRslt = await(conn.query(regQry, defer() ));
+  logger.info(regRslt);
+}
+
+function getUseYn(body , ko, en){
+  var useYn = "";
+  if( body.contains( [pc+ko+" 켬", pc+ko+" 등록", pc+ko+" on", epc+en+" on"] ) ){
+    useYn = "Y";
+  }else if( body.contains( [pc+ko+" 끔", pc+ko+" 해제", pc+ko+" off", epc+en+" off"] ) ){
+    useYn = "N";
+  }
+  return useYn;
+}
+
+function selectSvcAccMng(dvcd, author){
+  if( author.indexOf("\"") == -1 ){
+    author = "\""+ author + "\"";
+  }
+  var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and use_yn = 'Y' and acct_nm in ( "+author+" ) ";
+  logger.info( "selQry : "+selQry );
+  var selRslt = await(conn.query(selQry, [] , defer() ));
+  return selRslt;
+}
+
+function srchNewPostAndRegCmnt(source, target){
+  logger.info("source : "+ source.author + "님이 ");
+  logger.info("source : "+ target.acct_nm + "님을 ㅇㅇ글에서 멘션하셨습니다.");
+}
 
 var sleepTm = 1000;
 var pc = "@"; // pre command
@@ -242,10 +292,7 @@ try {
                     var custom_json = JSON.parse(operation[1].json);
                     if( "reblog" == custom_json[0] ){
                         logger.info( custom_json );
-                        var selQry = "select * from svc_acct_mng where dvcd = 1 and use_yn = 'Y' and acct_nm = '"+custom_json[1].author+"' ";
-                        logger.info( "selQry : "+selQry );
-                        var selRslt = await(conn.query(selQry, defer() ));
-                        if( selRslt.length > 0 ){
+                        if( selectSvcAccMng(1, custom_json[1].author).length > 0 ){
                           var comment = "@" + custom_json[1].account + "님께서 이 포스팅에 많은 관심을 가지고 있어요. 리스팀을 해주셨군요~! " ;
                           var inQry = "insert into bot_wrk_list "
                             + "(dvcd, author, perm_link, comment, wrk_status, vote_yn ) "
@@ -267,11 +314,31 @@ try {
               }// if( "custom_json" == operation[0] ){
               // 포스팅과 댓글은 comment
               else if( "comment" == operation[0] ){
-                if( operation[1].parent_author != ""){
+
+                if( operation[1].json_metadata ){
+                  var jsonMetadata = JSON.parse( operation[1].json_metadata );
+                  if( jsonMetadata.users ){
+                    logger.error( jsonMetadata.users );
+                    logger.error( "toSqlStr : "+toSqlArr(jsonMetadata.users) );
+
+                    var selRslt = selectSvcAccMng(2, toSqlArr(jsonMetadata.users));
+                    logger.error( "selRslt : "+selRslt );
+                    if(  typeof selRslt == "Array")
+                    for(var i = 0; i < selRslt.length;i++){
+                      srchNewPostAndRegCmnt( operation[1], selRslt[i] );
+                    }
+                    else {
+                      srchNewPostAndRegCmnt( operation[1], selRslt );
+                    }
+                  }
+                }
+
+                if( operation[1].parent_author != ""){ // 댓글만
+                  var useYn = "";
+                  var dvcd = "";
+                  var comment = "";
                     if( operation[1].body.contains( [ pc + "리스팀", epc + "resteem"] ) ){
                         logger.info( "@" + operation[1].author + " : " + operation[1].body);
-                        var useYn = "";
-
                         // 리스팀 리스트 start
                         if( operation[1].body.contains( [ pc + "리스팀 리스트", pc + "리스팀 목록", pc + "리스팀리스트", epc + "resteem list" , pc + "리스팀목록"] ) ){
                           var postInfo = getTopParentInfo(operation[1].author, operation[1].permlink);
@@ -291,41 +358,36 @@ try {
                           }
                           console.log(cmntReLst);
                           insertWrkList(operation[1].author, operation[1].permlink, cmntReLst);
-                          return;
+                          continue;
                         }
                         // 리스팀 리스트 end
-
-                        // 리스팀 on, off 등록 start
-                        if( operation[1].body.contains( [pc+"리스팀 켬", pc+"리스팀 등록", pc+"리스팀 on", epc+"resteem on"] ) ){
-                          useYn = "Y";
-                        }else if( operation[1].body.contains( [pc+"리스팀 끔", pc+"리스팀 해제", pc+"리스팀 off", epc+"resteem off"] ) ){
-                          useYn = "N";
-                        }else{
+                        useYn = getUseYn(operation[1].body, "리스팀", "resteem");  // body, ko, en
+                        if(useYn==""){
                           // 없으면 넘김.
                           logger.info("comment continue");
                           continue;
                         }
-                        // dvcd : 첫번째 서비스인 리스팀 알림 서비스번호는 1번으로.
-                        var selQry = "select * from svc_acct_mng where dvcd = 1 and acct_nm = '"+ operation[1].author +"' ";
-                        logger.info("selQry : " + selQry);
-                        var selRslt = await(conn.query(selQry, defer() ));
-                        logger.info(selRslt);
-                        var regQry = "";
-                        // 있으면 업데이트
-                        if( selRslt.length > 0 ){
-                          regQry = "update svc_acct_mng set use_yn = '"+ useYn +"' , perm_link = '" + operation[1].permlink + "' where dvcd = 1 and acct_nm = '"+ operation[1].author +"' ";
-                        }else{  // 없으면 등록!!!
-                          regQry = "insert into svc_acct_mng ( dvcd, acct_nm, perm_link, use_yn ) values (1, '"+ operation[1].author +"', '" + operation[1].permlink + "', '"+useYn+"' ) ";
-                        }
-                        logger.info("regQry : " + regQry);
-                        var regRslt = await(conn.query(regQry, defer() ));
-                        logger.info(regRslt);
-
-                        var comment = "리스팀 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니다." : "해제되었습니다." );
-                        insertWrkList( operation[1].author, operation[1].permlink, comment);
+                        dvcd = "1"; // 리스팀 안내
+                        comment = "리스팀 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니다." : "해제되었습니다." );
                         // 리스팀 on, off 등록 end
+                    }// if( operation[1].body.contains( [ pc + "리스팀", epc + "resteem"] ) ){
+                    else if( operation[1].body.contains( [ pc + "멘션", epc + "mention"] ) ){
+                      var useYn = getUseYn(operation[1].body, "멘션", "mention");  // body, ko, en
+                      if(useYn==""){
+                        // 없으면 넘김.
+                        logger.info("comment continue");
+                        continue;
+                      }
+                      dvcd = "2";
+                      var comment = "멘션 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니다." : "해제되었습니다." );
                     }
-                }
+                    if( dvcd != "" ){
+                        mergeSvcAcctMng(dvcd, operation[1].author, operation[1].permlink, useYn);
+                    }
+                    if( comment != "" ){
+                        insertWrkList( operation[1].author, operation[1].permlink, comment);
+                    }
+                }   // if( operation[1].parent_author != ""){ // 댓글만
               } // else if( "comment" == operation[0] ){
             } // for operations
           } // for transactions

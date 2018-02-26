@@ -11,4 +11,10 @@ var arrNode = [
 ];
 var idxNode = 0;
 steem.api.setOptions({url: arrNode[idxNode] });
-console.log(steem);
+//console.log(steem);
+
+steem.api.getContent("nhj12311", "re-steemapps-re-nhj12311-node-and-steem-9-20180226t074936855z",
+  function (err, result){
+    console.log(result);
+  }
+);
