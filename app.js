@@ -90,7 +90,6 @@ if( process.env.NODE_ENV == 'development' ){
 var mysql = require('mysql'); // mysql lib load.
 // mysql create connection!!
 var conn;
-
 function createConnect() {
   conn = mysql.createConnection(db_config);
   conn.connect(function(err) {
