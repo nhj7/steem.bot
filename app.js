@@ -446,7 +446,7 @@ try {
                       }
                       const query = operation[1].body.replace(pc + "검색", "").replace(epc + "search", "").trim();
                       const items = inqryGoogle(query);
-
+                      dvcd = "3";
                       var comment = "안녕하세요. @steem.apps입니다. 요청하신 구글 내 스팀잇 `["+query+"]` 검색 결과입니다. <br /> "+nl+nl;
 
                       for(var i = 0; i < items.length ;i++){
