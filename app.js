@@ -434,8 +434,14 @@ try {
                   var dvcd = "";
                   var comment = "";
                     if( operation[1].body.contains( [ pc + "검색", epc + "search"] ) ){
-                      if( operation[1].body.length > 180 ){
+                      if( operation[1].body.length > 64 ){
                         logger.info("검색어 길이가 너무 깁니다. " + operation[1].body);
+                        continue;
+                      }else if(
+                        operation[1].body.indexOf(pc + "검색") > 0
+                        || operation[1].body.indexOf(epc + "search") > 0
+                      ){
+                        logger.info("검색 형식에 맞지 않습니다." + operation[1].body);
                         continue;
                       }
                       const query = operation[1].body.replace(pc + "검색", "").replace(epc + "search", "").trim();

@@ -1,1 +1,1 @@
-console.log( "... 저장된 페이지".replace("... 저장된 페이지", "") );
+console.log( "@검색 리니지".indexOf("@검색") );
