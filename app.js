@@ -252,9 +252,9 @@ function srchNewPostAndRegCmnt(source, target){
   }else{
     originalPost = source;
   }
-  var comment = "["+ source.author + "](https://steemit.com/@"+source.author+")님이 ";
+  var comment = "["+ source.author + "](/@"+source.author+")님이 ";
   comment += target.acct_nm + "님을 멘션하셨습니다. 아래에서 확인해볼까요? ^^ <br />";
-  comment += ("["+ originalPost.title + "](https://steemit.com/@"+originalPost.author+"/"+originalPost.permlink+")");
+  comment += ("["+ originalPost.title + "](/@"+originalPost.author+"/"+originalPost.permlink+")");
 
   logger.info(comment);
 
@@ -325,23 +325,10 @@ try {
                         logger.info( custom_json );
                         if( selectSvcAccMng(1, custom_json[1].author).length > 0 ){
                           var comment = "@" + custom_json[1].account + "님께서 이 포스팅에 많은 관심을 가지고 있어요. 리스팀을 해주셨군요~! " ;
-                          var inQry = "insert into bot_wrk_list "
-                            + "(dvcd, author, perm_link, comment, wrk_status, vote_yn ) "
-                            + "values( ?, ?, ?, ?, ?, ?) ";
-                          var params = [
-                              1  // dvcd
-                              , custom_json[1].author // author
-                              , custom_json[1].permlink // permlink
-                              , comment // comment
-                              , "1" // wrk_status 0:complete, 1:ready, 9:error
-                              , "N" // vote_yn
-                          ];
-                          var inRslt = await(conn.query(inQry, params, defer() ));
-                          logger.info(inRslt);
+                          insertWrkList(operation[1].author, operation[1].permlink, comment);
                         }
                     } // if( reblog )
-                  }
-
+                  } // if( operation[1].json ){
               }// if( "custom_json" == operation[0] ){
               // 포스팅과 댓글은 comment
               else if( "comment" == operation[0] ){
@@ -382,7 +369,7 @@ try {
                           cmntReLst += "리스팀 목록 | "+nl;
                           cmntReLst += "-| "+nl;
                           for(var idx = 0; idx < result.length;idx++){
-                            cmntReLst += "["+result[idx]+"](https://steemit.com/@"+result[idx]+")| " + nl;
+                            cmntReLst += "["+result[idx]+"](/@"+result[idx]+")| " + nl;
                           }
                           if( result.length == 0 ){
                             cmntReLst = "아직 리스팀 해주신 분들이 없네요. ㅠㅠ 너무 실망하지 말고 힘내세요.";
