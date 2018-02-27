@@ -17,14 +17,18 @@ function toSqlArr(arr){
 }
 // custom function create end.
 
-// winston log init!
-var winston = require('winston');
+// module init
+const winston = require('winston');
 require('winston-daily-rotate-file');
+
+// module end
+
+// winston log init!
 const tsFormat = () => (new Date()).toLocaleTimeString();
 
 console.log("tsFormat : " + tsFormat);
 
-var logger = new (winston.Logger)({
+const logger = new (winston.Logger)({
    transports: [
      new (winston.transports.Console)({ timestamp: tsFormat }),
      new (winston.transports.DailyRotateFile)({
@@ -61,10 +65,10 @@ logger.error('error logs');
 // winston log init end.
 
 // synchronize init!
-var sync = require('synchronize');
-var fiber = sync.fiber;
-var await = sync.await;
-var defer = sync.defer;
+const sync = require('synchronize');
+const fiber = sync.fiber;
+const await = sync.await;
+const defer = sync.defer;
 // synchronize init end!
 
 
@@ -96,7 +100,7 @@ if( process.env.NODE_ENV == 'development' ){
   db_config = db_config.prod;
 }
 
-var mysql = require('mysql'); // mysql lib load.
+const mysql = require('mysql'); // mysql lib load.
 // mysql create connection!!
 var conn;
 function createConnect() {
@@ -124,8 +128,8 @@ function createConnect() {
 
 
 // steem init!
-var steem = require("steem");
-var arrNode = [
+const steem = require("steem");
+const arrNode = [
   'https://api.steemit.com'
   ,'https://steemd.dist.one'
   //,'https://rpc.dist.one'
@@ -163,6 +167,82 @@ function sleep(ms) {
     }, ms);
     Fiber.yield();
 }
+
+// web scrapping module init
+const request = require('request');
+const iconv = require('iconv-lite') //인코딩을 변환 해주는 모듈, 필자는 iconv보다 iconv-lite를 선호한다.
+const charset = require('charset') //해당 사이트의 charset값을 알 수 있게 해준다.
+const qs = require('querystring');
+const cheerio = require('cheerio');
+// web scrapping module end
+
+function awaitRequest(param, callback){
+  request(param, function(error, res, body){
+    var data = { res : res, body : body };
+    callback(error, data );
+  });
+}
+
+function inqryGoogle( query ){
+  const queryString = "site:steemit.com " + query;
+  const queryStringEscape = qs.escape(queryString);
+  console.log(queryStringEscape);
+  const items = new Array();
+  const arrQs = queryString.split(" ");
+  for(var i = 0; i < 1 ; i++){
+  const url = 'https://www.google.co.kr/search?newwindow=1&q='+queryStringEscape+'&oq='+queryStringEscape+"&start="+(i*10);
+  try{
+    var result = await(awaitRequest({url:url, encoding : null }, defer() ));
+    //console.log(result);
+    var error = result.error;
+    var res = result.res;
+    var body = result.body;
+    if (error) {throw error};
+    const enc = charset(res.headers, body); // 해당 사이트의 charset값을 획득
+    const html = iconv.decode(body, enc); // 획득한 charset값으로 body를 디코딩
+    var $ = cheerio.load(html);
+    $('.g').each(function(idx){
+        const doc = $(this);
+        let title = doc.find("a").text().replace("— Steemit저장된 페이지","");
+        title = title.replace("...저장된 페이지","");
+        if( title ==  queryString + " 관련 이미지" ){
+          return;
+        }
+        const href = doc.find("a").attr("href");
+        const href_unescape = qs.unescape(href);
+        const hrefSplit1 = href_unescape.split("/");
+        let st = doc.find(".st").text().replace(/\n/gi, "");
+        for(var i = 1; i < arrQs.length ;i++){
+          if( arrQs[i].trim() == "" ) continue;
+          var re = new RegExp(arrQs[i],"gi");
+          st = st.replace(re, "<b>"+arrQs[i]+"</b>");
+          title = title.replace(re, "<b>"+arrQs[i]+"</b>");
+        }
+        if(hrefSplit1.length < 6 || hrefSplit1[5].indexOf("@") == -1 ){
+          return;
+        }
+        const permlink = hrefSplit1[6].split("&")[0];
+        var item = {
+          link : "/" + hrefSplit1[5] + "/" + hrefSplit1[6].split("&")[0]
+          , author : hrefSplit1[5].substring(1)
+          , permlink : permlink
+          , title : title
+          , st : st
+          , avatar : "https://steemitimages.com/u/"+hrefSplit1[5].substring(1)+"/avatar"
+        };
+        items.push(item);
+    }); // $('.g').each(function(idx){
+  }catch(e){
+    console.log("e : "+e);
+  }
+  sleep(500); // google search wait. 0.5 sec.
+  } // for
+  console.log(items);
+  return items;
+}
+
+
+
 
 function getTopParentInfo(author, permlink){
   var cntWhile = 0;
@@ -309,8 +389,6 @@ try {
             workBlockNumber++;
         }
         //logger.info( 'lastBlockNumber : ' + lastBlockNumber + ", workBlockNumber : " + workBlockNumber);
-
-
         try {
           var block = await( steem.api.getBlock(workBlockNumber, defer()) );
           if( block.transactions )
@@ -355,7 +433,25 @@ try {
                   var useYn = "";
                   var dvcd = "";
                   var comment = "";
-                    if( operation[1].body.contains( [ pc + "리스팀", epc + "resteem"] ) ){
+                    if( operation[1].body.contains( [ pc + "검색", epc + "search"] ) ){
+                      if( operation[1].body.length > 180 ){
+                        logger.info("검색어 길이가 너무 깁니다. " + operation[1].body);
+                        continue;
+                      }
+                      const query = operation[1].body.replace(pc + "검색", "").replace(epc + "search", "").trim();
+                      const items = inqryGoogle(query);
+
+                      var comment = "안녕하세요. @steem.apps입니다. 요청하신 구글 내 스팀잇 `["+query+"]` 검색 결과입니다. <br /> "+nl+nl;
+
+                      for(var i = 0; i < items.length ;i++){
+                        comment += "["+(i+1) + ". " + items[i].author + "님의 "+items[i].title+"](/@"+items[i].author+"/"+items[i].permlink+") " + " |"+nl;
+                        if( i == 0 ){
+                          comment += "--|" + nl;
+                        }
+                        comment += "<sup>" + items[i].st + "|</sup>" + nl;
+                      }
+                    }
+                    else if( operation[1].body.contains( [ pc + "리스팀", epc + "resteem"] ) ){
                         logger.info( "@" + operation[1].author + " : " + operation[1].body);
                         // 리스팀 리스트 start
                         if( operation[1].body.contains( [ pc + "리스팀 리스트", pc + "리스팀 목록", pc + "리스팀리스트", epc + "resteem list" , pc + "리스팀목록"] ) ){
