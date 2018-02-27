@@ -180,8 +180,14 @@ function getTopParentInfo(author, permlink){
     , permlink : permlink
   };
 }
+function getTopParentContent(author, permlink){
+  var parentInfo = getTopParentInfo(author, permlink);
+  var result = await(steem.api.getContent(parentInfo.author, parentInfo.permlink, defer()));
+  return result;
+}
 
 function insertWrkList(author, permlink, comment){
+  logger.info("insertWrkList : " + author + ", " + author + ","+comment );
   var inQry = "insert into bot_wrk_list "
     + "(dvcd, author, perm_link, comment, wrk_status, vote_yn ) "
     + "values( ?, ?, ?, ?, ?, ?) ";
@@ -235,8 +241,33 @@ function selectSvcAccMng(dvcd, author){
 }
 
 function srchNewPostAndRegCmnt(source, target){
-  logger.info("source : "+ source.author + "님이 ");
-  logger.info("source : "+ target.acct_nm + "님을 ㅇㅇ글에서 멘션하셨습니다.");
+  if( source.author == target.acct_nm ){
+    return;
+  }
+  //logger.info(source);
+  //logger.info(target);
+  var originalPost;
+  if( source.parent_author != "" ){
+    var originalPost = getTopParentContent( source.author, source.permlink );
+  }else{
+    originalPost = source;
+  }
+  var comment = "["+ source.author + "](https://steemit.com/@"+source.author+")님이 ";
+  comment += target.acct_nm + "님을 멘션하셨습니다. 아래에서 확인해볼까요? ^^ <br />";
+  comment += ("["+ originalPost.title + "](https://steemit.com/@"+originalPost.author+"/"+originalPost.permlink+")");
+
+  logger.info(comment);
+
+  var lastCmnt = await(steem.api.getDiscussionsByAuthorBeforeDate(target.acct_nm, null, '2100-01-01T00:00:00', 1, defer()));
+  if( lastCmnt.length == 0 ){
+    lastCmnt = await(steem.api.getDiscussionsByComments({ start_author : target.acct_nm, limit: 1}, defer()));
+  }
+  logger.error(lastCmnt);
+  console.log(lastCmnt);
+  if( lastCmnt.length == 0 ) return;
+
+  logger.info(lastCmnt);
+  insertWrkList(lastCmnt[0].author, lastCmnt[0].permlink, comment);
 }
 
 var sleepTm = 1000;
@@ -318,16 +349,16 @@ try {
                 if( operation[1].json_metadata ){
                   var jsonMetadata = JSON.parse( operation[1].json_metadata );
                   if( jsonMetadata.users ){
-                    logger.error( jsonMetadata.users );
-                    logger.error( "toSqlStr : "+toSqlArr(jsonMetadata.users) );
+                    //logger.error( jsonMetadata.users );
+                    //logger.error( "toSqlStr : "+toSqlArr(jsonMetadata.users) );
 
                     var selRslt = selectSvcAccMng(2, toSqlArr(jsonMetadata.users));
-                    logger.error( "selRslt : "+selRslt );
-                    if(  typeof selRslt == "Array")
-                    for(var i = 0; i < selRslt.length;i++){
-                      srchNewPostAndRegCmnt( operation[1], selRslt[i] );
+                    //logger.error( "selRslt : "+selRslt );
+                    if(  Array.isArray(selRslt) && selRslt.length > 0 )
+                    for(var idxSel = 0; idxSel < selRslt.length;idxSel++){
+                      srchNewPostAndRegCmnt( operation[1], selRslt[idxSel] );
                     }
-                    else {
+                    else if( selRslt.length > 0){
                       srchNewPostAndRegCmnt( operation[1], selRslt );
                     }
                   }
