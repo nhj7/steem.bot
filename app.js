@@ -334,22 +334,16 @@ function srchNewPostAndRegCmnt(source, target){
   }
   var comment = "["+ source.author + "](/@"+source.author+")님이 ";
   comment += target.acct_nm + "님을 멘션하셨습니다. 아래에서 확인해볼까요? ^^ <br />";
-  var pull_link = originalPost.title + "](/@"+originalPost.author+"/"+originalPost.permlink;
-
-  comment += ("["+ pull_link +")");
-
+  var pull_link =  + "/@"+originalPost.author+"/"+originalPost.permlink;
+  comment += ("["+ originalPost.title + "](" + pull_link +")");
   logger.info(comment);
-
   var lastCmnt = await(steem.api.getDiscussionsByAuthorBeforeDate(target.acct_nm, null, '2100-01-01T00:00:00', 1, defer()));
   if( lastCmnt.length == 0 ){
     lastCmnt = await(steem.api.getDiscussionsByComments({ start_author : target.acct_nm, limit: 1}, defer()));
   }
-  logger.error(lastCmnt);
-  console.log(lastCmnt);
+  //logger.error(lastCmnt);
   if( lastCmnt.length == 0 ) return;
-
   logger.info(lastCmnt);
-
   var reples = await(steem.api.getContentReplies(lastCmnt[0].author, lastCmnt[0].permlink, defer()));
   for(var rpIdx = 0; rpIdx < reples.length;rpIdx++){
       if( reples[rpIdx].body.indexOf(pull_link) > -1 ){
