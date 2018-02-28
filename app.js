@@ -334,7 +334,9 @@ function srchNewPostAndRegCmnt(source, target){
   }
   var comment = "["+ source.author + "](/@"+source.author+")님이 ";
   comment += target.acct_nm + "님을 멘션하셨습니다. 아래에서 확인해볼까요? ^^ <br />";
-  comment += ("["+ originalPost.title + "](/@"+originalPost.author+"/"+originalPost.permlink+")");
+  var pull_link = originalPost.title + "](/@"+originalPost.author+"/"+originalPost.permlink;
+
+  comment += ("["+ pull_link +")");
 
   logger.info(comment);
 
@@ -347,6 +349,13 @@ function srchNewPostAndRegCmnt(source, target){
   if( lastCmnt.length == 0 ) return;
 
   logger.info(lastCmnt);
+
+  var reples = await(steem.api.getContentReplies(lastCmnt[0].author, lastCmnt[0].permlink, defer()));
+  for(var rpIdx = 0; rpIdx < reples.length;rpIdx++){
+      if( reples[rpIdx].body.indexOf(pull_link) > -1 ){
+        return;
+      }
+  }
   insertWrkList(lastCmnt[0].author, lastCmnt[0].permlink, comment);
 }
 
@@ -354,8 +363,8 @@ var sleepTm = 1000;
 var pc = "@"; // pre command
 var epc = "!"; // pre command
 var nl = "\r\n";  // new line
-function blockBot(){
 
+function blockBot(){
 try {
     logger.info( "steem init!" );
     // steem 데이터 조회!!
@@ -593,15 +602,15 @@ logger.info("end.");
 
 process.on('exit', function(code) {
   console.log('server exit', code);
-  conn.close();
+  if( conn ){
+      conn.close();
+  }
 });
 
 process.on('uncaughtException', function(err) {
     console.log('server uncaughtException', err);
     process.exit(1);
-
 });
-
 
 function startBot(){
   blockBot();
@@ -609,3 +618,16 @@ function startBot(){
 }
 
 createConnect();
+
+// 1. 계정가입을 받기 위한 walletBot
+function walletBot(){
+    try {
+
+    }catch(err){
+      logger.error(err, "졸라 에러남.");
+    }
+}
+
+fiber(function() {
+walletBot();
+});

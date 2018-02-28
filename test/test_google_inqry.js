@@ -46,13 +46,15 @@ steem.api.setOptions({url: arrNode[idxNode] });
 
 function inqryGoogle( query ){
   const queryString = "site:steemit.com " + query;
+  console.log(queryString);
   const queryStringEscape = qs.escape(queryString);
   console.log(queryStringEscape);
   const items = new Array();
   const arrQs = queryString.split(" ");
   fiber(function() {
   for(var i = 0; i < 1 ; i++){
-  const url = 'https://www.google.co.kr/search?newwindow=1&q='+queryStringEscape+'&oq='+queryStringEscape+"&start="+(i*10);
+  const url = 'https://www.google.co.kr/search?newwindow=1&q='+queryStringEscape+'&oq='+queryStringEscape+"";
+  //const url = 'https://www.google.co.kr/search?newwindow=1&ei=YP2VWrelLYXP0ATD1ZX4Dg&q=site%3Asteemit.com%20%EB%B9%84%ED%8A%B8%EC%BD%94%EC%9D%B8&oq=site%3Asteemit.com%20%EB%B9%84%ED%8A%B8%EC%BD%94%EC%9D%B8&gs_l=psy-ab.12...0.0.0.784.0.0.0.0.0.0.0.0..0.0....0...1c..64.psy-ab..0.0.0....0.V3q3S6QPY6Q';
   try{
     var result = await(awaitRequest({url:url, encoding : null }, defer() ));
     //console.log(result);
@@ -62,6 +64,7 @@ function inqryGoogle( query ){
     if (error) {throw error};
     const enc = charset(res.headers, body); // 해당 사이트의 charset값을 획득
     const html = iconv.decode(body, enc); // 획득한 charset값으로 body를 디코딩
+    console.log(html);
     var $ = cheerio.load(html);
     $('.g').each(function(idx){
         const doc = $(this);
@@ -121,4 +124,4 @@ function inqryGoogle( query ){
   }); // fibers...
 }
 
-inqryGoogle("임신 출산");
+inqryGoogle("비트코인");
