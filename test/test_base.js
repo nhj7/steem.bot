@@ -34,7 +34,7 @@ const logger = new (winston.Logger)({
      new (winston.transports.DailyRotateFile)({
           // filename property 지정
           name : 'log'
-          , filename: '/log/console.log'
+          , filename: '/log/test//console.log'
           , datePattern: '.yyyy.MM.dd'
           , prepend: false
           , timestamp: tsFormat
@@ -47,7 +47,7 @@ const logger = new (winston.Logger)({
       }),
      new (winston.transports.DailyRotateFile)({
          name : 'error_log'
-         , filename: '/log/error.log'
+         , filename: '/log/test/error.log'
          , datePattern: '.yyyy.MM.dd'
          , prepend: false
          , timestamp: tsFormat
@@ -103,26 +103,28 @@ if( process.env.NODE_ENV == 'development' ){
 const mysql = require('mysql'); // mysql lib load.
 // mysql create connection!!
 var conn;
-function createConnect() {
+function connectDatabase(callback) {
   conn = mysql.createConnection(db_config);
   conn.connect(function(err) {
     if(err) {
       logger.error('error when connecting to db:', err);
-      setTimeout(createConnect, 2000);
+      setTimeout(connectDatabase, 2000);
     }
     setInterval(function () {
         conn.query('SELECT 1');
     }, 60000);
-    startBot();
+
+    callback();
   });
   conn.on('error', function(err) {
     logger.error('db error', err);
     if(err.code === 'PROTOCOL_CONNECTION_LOST') {
-      createConnect();
+      connectDatabase();
     } else {
       throw err;
     }
   });
+
 }
 
 
@@ -142,21 +144,6 @@ var idxNode = 0;
 steem.api.setOptions({url: arrNode[idxNode] });
 
 // steem init! end
-
-// 실제 DB에 연결.
-var cntNodeErr = 0;
-var stnrNodeErr = 3;
-function rotateNode(){
-  if( cntNodeErr >= stnrNodeErr ){
-    if( arrNode.length == idxNode+1){
-      idxNode = 0;
-    }else{
-      idxNode++;
-    }
-    steem.api.setOptions({url: arrNode[idxNode] });
-    cntNodeErr = 0;
-  }
-}
 
 var Fiber = require('fibers');
 
@@ -597,7 +584,7 @@ logger.info("end.");
 process.on('exit', function(code) {
   console.log('server exit', code);
   if( conn ){
-      conn.close();
+      conn.end();
   }
 });
 
@@ -611,17 +598,17 @@ function startBot(){
   wrkBot();
 }
 
-createConnect();
+function end(){
+  if(conn) conn.end();
 
-// 1. 계정가입을 받기 위한 walletBot
-function walletBot(){
-    try {
-
-    }catch(err){
-      logger.error(err, "졸라 에러남.");
-    }
+  process.exit(1);
 }
 
-fiber(function() {
-walletBot();
-});
+function _start(callback){
+  connectDatabase(callback);
+}
+
+exports.start = function (callback) {
+  console.log(callback);
+  _start(callback);
+};
