@@ -334,7 +334,7 @@ function srchNewPostAndRegCmnt(source, target){
   }
   var comment = "["+ source.author + "](/@"+source.author+")님이 ";
   comment += target.acct_nm + "님을 멘션하셨습니다. 아래에서 확인해볼까요? ^^ <br />";
-  var pull_link =  + "/@"+originalPost.author+"/"+originalPost.permlink;
+  var pull_link = "/@"+originalPost.author+"/"+originalPost.permlink;
   comment += ("["+ originalPost.title + "](" + pull_link +")");
   logger.info(comment);
   var lastCmnt = await(steem.api.getDiscussionsByAuthorBeforeDate(target.acct_nm, null, '2100-01-01T00:00:00', 1, defer()));
