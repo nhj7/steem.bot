@@ -564,7 +564,7 @@ function wrkBot(){
           var author = botList[i].id;
           var parentAuthor = wrkList[i].author;
           var parentPermlink = wrkList[i].perm_link;
-          var permlink = steem.formatter.commentPermlink(parentAuthor, parentPermlink);
+          var permlink = steem.formatter.commentPermlink(parentAuthor.replace(/./gi,"-"), parentPermlink);
           var title = "";
           var body = wrkList[i].comment;
           var jsonMetadata = {};

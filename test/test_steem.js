@@ -32,6 +32,22 @@ console.log(arrNode[idxNode]);
 //   }
 // });
 
-steem.api.getContentReplies("gopaxkr", "kchfq", function(err, result) {
-  console.log(err, result);
-});
+// steem.api.getContentReplies("gopaxkr", "kchfq", function(err, result) {
+//   console.log(err, result);
+// });
+
+var wif = "";
+var author = "nhj12311";
+var parentAuthor = "steem.apps";
+var parentPermlink = "re-nhj12311-3rzveg-steem-apps-20180228t095224894z";
+var permlink = steem.formatter.commentPermlink(parentAuthor.replace(/./gi,"-"), parentPermlink);
+var title = "";
+var body = "테스트 댓글!!!";
+var jsonMetadata = {};
+
+var commentRslt = steem.broadcast.comment(wif, parentAuthor, parentPermlink, author, permlink, title, body, jsonMetadata,
+  function(err, result){
+    console.log(err, result);
+  }
+);
+//logger.error(commentRslt);
