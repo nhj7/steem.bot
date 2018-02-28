@@ -189,7 +189,8 @@ function inqryGoogle( query ){
   console.log(queryStringEscape);
   const items = new Array();
   const arrQs = queryString.split(" ");
-  for(var i = 0; i < 1 ; i++){
+  const inqryCnt = 1;
+  for(var i = 0; i < inqryCnt ; i++){
   const url = 'https://www.google.co.kr/search?newwindow=1&q='+queryStringEscape+'&oq='+queryStringEscape+"&start="+(i*10);
   try{
     var result = await(awaitRequest({url:url, encoding : null }, defer() ));
@@ -215,8 +216,8 @@ function inqryGoogle( query ){
         for(var i = 1; i < arrQs.length ;i++){
           if( arrQs[i].trim() == "" ) continue;
           var re = new RegExp(arrQs[i],"gi");
-          st = st.replace(re, "<b>"+arrQs[i]+"</b>");
-          title = title.replace(re, "<b>"+arrQs[i]+"</b>");
+          st = st.replace(re, "<b>"+arrQs[i]+"</b>").replace(/\|/gi, "│");
+          title = title.replace(re, "<b>"+arrQs[i]+"</b>").replace(/\|/gi, "│");
         }
         if(hrefSplit1.length < 6 || hrefSplit1[5].indexOf("@") == -1 ){
           return;
@@ -235,14 +236,13 @@ function inqryGoogle( query ){
   }catch(e){
     console.log("e : "+e);
   }
-  sleep(500); // google search wait. 0.5 sec.
+  if( inqryCnt > i+1){
+      sleep(500); // google search wait. 0.5 sec.
+  }
   } // for
   console.log(items);
   return items;
 }
-
-
-
 
 function getTopParentInfo(author, permlink){
   var cntWhile = 0;
@@ -321,7 +321,7 @@ function selectSvcAccMng(dvcd, author){
 }
 
 function srchNewPostAndRegCmnt(source, target){
-  if( source.author == target.acct_nm ){
+  if( source.author == target.acct_nm || source.parent_author == target.acct_nm ){
     return;
   }
   //logger.info(source);

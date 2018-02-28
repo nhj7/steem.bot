@@ -11,4 +11,10 @@ var arrNode = [
 
 var idxNode = 0;
 steem.api.setOptions({url: arrNode[idxNode] });
-console.log(steem.api);
+//console.log(steem.api);
+
+steem.api.getContent("umkin", "2cebzz",
+  function(err, result ){
+    console.log(result);
+  }
+);

@@ -78,8 +78,8 @@ function inqryGoogle( query ){
         let st = doc.find(".st").text().replace(/\n/gi, "");
         for(var i = 1; i < arrQs.length ;i++){
           var re = new RegExp(arrQs[i],"gi");
-          st = st.replace(re, "<b>"+arrQs[i]+"</b>");
-          title = title.replace(re, "<b>"+arrQs[i]+"</b>");
+          st = st.replace(re, "<b>"+arrQs[i]+"</b>").replace(/\|/gi, "│");
+          title = title.replace(re, "<b>"+arrQs[i]+"</b>").replace(/\|/gi, "│");
         }
         if(hrefSplit1.length < 6 || hrefSplit1[5].indexOf("@") == -1 ){
           return;
@@ -115,7 +115,7 @@ function inqryGoogle( query ){
   }catch(e){
     console.log("e : "+e);
   }
-  sleep(500);
+  //sleep(500);
   } // for
 
 
@@ -124,4 +124,4 @@ function inqryGoogle( query ){
   }); // fibers...
 }
 
-inqryGoogle("비트코인");
+inqryGoogle("hackerzizon");
