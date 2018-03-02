@@ -81,7 +81,9 @@ var db_config = {
       port: '3306',
       user: 'steem_nhj',
       password: 'steem_nhj',
-      database: 'steem_nhj'
+      database: 'steem_nhj',
+      connectionLimit:20,
+      waitForConnections:false
     },
     // 개발 모드
     dev: {
@@ -89,7 +91,9 @@ var db_config = {
       port: '3306',
       user: 'steem_nhj',
       password: 'steem_nhj',
-      database: 'steem_nhj'
+      database: 'steem_nhj',
+      connectionLimit:20,
+      waitForConnections:false
     }
 };
 
@@ -103,29 +107,31 @@ if( process.env.NODE_ENV == 'development' ){
 const mysql = require('mysql'); // mysql lib load.
 // mysql create connection!!
 var conn;
-function createConnect() {
-  conn = mysql.createConnection(db_config);
-  conn.connect(function(err) {
-    if(err) {
-      logger.error('error when connecting to db:', err);
-      setTimeout(createConnect, 2000);
-    }
-    setInterval(function () {
-        conn.query('SELECT 1');
-    }, 60000);
-    startBot();
-  });
-  conn.on('error', function(err) {
-    logger.error('db error', err);
-    if(err.code === 'PROTOCOL_CONNECTION_LOST') {
-      createConnect();
-    } else {
-      throw err;
-    }
-  });
+var pool;
+function connectDatabase() {
+  //conn = mysql.createConnection(db_config);
+  pool = mysql.createPool(db_config);
+  // conn.connect(function(err) {
+  //   if(err) {
+  //     logger.error('error when connecting to db:', err);
+  //     setTimeout(connectDatabase, 2000);
+  //   }
+  //   setInterval(function () {
+  //       exeQuery('SELECT 1');
+  //   }, 60000);
+  //   startBot();
+  // });
+  // conn.on('error', function(err) {
+  //   logger.error('db error', err);
+  //   if(err.code === 'PROTOCOL_CONNECTION_LOST') {
+  //     connectDatabase();
+  //   } else {
+  //     throw err;
+  //   }
+  // });
 }
 
-
+connectDatabase();
 
 // steem init!
 const steem = require("steem");
@@ -180,6 +186,20 @@ function awaitRequest(param, callback){
   request(param, function(error, res, body){
     var data = { res : res, body : body };
     callback(error, data );
+  });
+}
+
+function exeQuery(sql , callback ){
+  return exeQuery(sql, [], callback);
+}
+
+function exeQuery(sql, params, callback){
+  console.log("query.sql : "+sql );
+  pool.getConnection(function(err,connection){
+    var result = connection.query(sql , params , function (err, rows) {
+      connection.release();
+      callback(err, result);
+    });
   });
 }
 
@@ -281,14 +301,14 @@ function insertWrkList(author, permlink, comment, src_author, src_permlink){
       , src_author
       , src_permlink
   ];
-  var inRslt = await(conn.query(inQry, params, defer() ));
+  var inRslt = await(exeQuery(inQry, params, defer() ));
   logger.info(inRslt);
 }
 
 function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn){
   var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
   logger.info("selQry : " + selQry);
-  var selRslt = await(conn.query(selQry, defer() ));
+  var selRslt = await(exeQuery(selQry, defer() ));
   logger.info(selRslt);
   var regQry = "";
   // 있으면 업데이트
@@ -298,7 +318,7 @@ function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn){
     regQry = "insert into svc_acct_mng ( dvcd, acct_nm, permlink, use_yn ) values ("+dvcd+", '"+ acct_nm +"', '" + permlink + "', '"+useYn+"' ) ";
   }
   logger.info("regQry : " + regQry);
-  var regRslt = await(conn.query(regQry, defer() ));
+  var regRslt = await(exeQuery(regQry, defer() ));
   logger.info(regRslt);
 }
 
@@ -318,7 +338,7 @@ function selectSvcAccMng(dvcd, author){
   }
   var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and use_yn = 'Y' and acct_nm in ( "+author+" ) ";
   logger.info( "selQry : "+selQry );
-  var selRslt = await(conn.query(selQry, [] , defer() ));
+  var selRslt = await(exeQuery(selQry, [] , defer() ));
   return selRslt;
 }
 
@@ -333,7 +353,7 @@ function srchNewPostAndRegCmnt(source, target){
   exQry += " and author = ?";
   exQry += " and src_author = ?";
   exQry += " and src_permlink = ?";
-  var exRslt = await(conn.query(exQry, [target.acct_nm, source.author, source.permlink] , defer() ));
+  var exRslt = await(exeQuery(exQry, [target.acct_nm, source.author, source.permlink] , defer() ));
   if( exRslt.length > 0 ){
     logger.error("이미 달려서 댓글 달지마삼...");
     return;
@@ -548,16 +568,18 @@ function wrkBot(){
   try{
   //for(var loopCnt = 0; true ;loopCnt++ ){
       sleep(sleepTm);
-      if( conn.state != 'authenticated'){
-        return;
-      }
+      // if( conn.state != 'authenticated'){
+      //   return;
+      // }
       var chk = true;
       logger.info("wrkBot execute." );
 
       try{
         var selWrkQry = " select * from bot_wrk_list where wrk_status <> 0 order by seq asc ";
-        var wrkList = await(conn.query(selWrkQry, [], defer() ));
 
+        var wrkList = await(exeQuery(selWrkQry, [1] , defer() ));
+        logger.info( wrkList );
+        logger.info("wrkBot execute.2" + wrkList.length );
         if( wrkList == null || wrkList.length <= 0 ){
           return;
         }
@@ -567,7 +589,7 @@ function wrkBot(){
           + " and last_comment_dttm < DATE_ADD(now(), INTERVAL -20 second) "
           + " order by last_comment_dttm asc ";
 
-        var botList = await(conn.query(selBotQry, [ 1 ], defer() ));
+        var botList = await(exeQuery(selBotQry, [1] , defer() ));
         if( botList == null && botList.length <= 0 ){
           return;
         }
@@ -587,10 +609,10 @@ function wrkBot(){
           logger.error(commentRslt);
 
           var botUpQry = "update bot_acct_mng set last_comment_dttm = now() where seq = ? and id = ? " ;
-          var botUpRslt = await(conn.query(botUpQry, [ botList[i].seq, botList[i].id ], defer() ));
+          var botUpRslt = await(exeQuery(botUpQry, [ botList[i].seq, botList[i].id ], defer() ));
 
           var wrkUpQry = "update bot_wrk_list set wrk_status = 0, wrk_dttm = now() where seq = ?" ;
-          var wrkUpRslt = await(conn.query(wrkUpQry, [ wrkList[i].seq  ], defer() ));
+          var wrkUpRslt = await(exeQuery(wrkUpQry, [ wrkList[i].seq  ], defer() ));
         }
       }catch(err){
         logger.error("wrkBot error : ", err);
@@ -621,11 +643,12 @@ process.on('uncaughtException', function(err) {
 });
 
 function startBot(){
-  blockBot();
+//  blockBot();
   wrkBot();
 }
 
-createConnect();
+connectDatabase();
+startBot();
 
 // 1. 계정가입을 받기 위한 walletBot
 function walletBot(){
