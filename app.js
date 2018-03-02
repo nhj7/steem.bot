@@ -417,11 +417,11 @@ try {
                   if( operation[1].json ){
                     var custom_json = JSON.parse(operation[1].json);
                     if( "reblog" == custom_json[0] ){
-                        logger.info( custom_json );
-                        if( selectSvcAccMng(1, custom_json[1].author).length > 0 ){
-                          var comment = "@" + custom_json[1].account + "님께서 이 포스팅에 많은 관심을 가지고 있어요. 리스팀을 해주셨군요~! " ;
-                          insertWrkList(operation[1].author, operation[1].permlink, comment);
-                        }
+                      logger.info( custom_json );
+                      if( selectSvcAccMng(1, custom_json[1].author).length > 0 ){
+                        var comment = "@" + custom_json[1].account + "님께서 이 포스팅에 많은 관심을 가지고 있어요. 리스팀을 해주셨군요~! " ;
+                        insertWrkList(custom_json[1].author, custom_json[1].permlink, comment);
+                      }
                     } // if( reblog )
                   } // if( operation[1].json ){
               }// if( "custom_json" == operation[0] ){
