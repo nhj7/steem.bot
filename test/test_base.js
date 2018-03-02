@@ -113,8 +113,10 @@ function connectDatabase(callback) {
     setInterval(function () {
         conn.query('SELECT 1');
     }, 60000);
+    fiber(function() {
+        callback();
+    });
 
-    callback();
   });
   conn.on('error', function(err) {
     logger.error('db error', err);
@@ -609,6 +611,11 @@ function _start(callback){
 }
 
 exports.start = function (callback) {
-  console.log(callback);
   _start(callback);
 };
+
+exports.name = "name";
+exports.fiber = fiber;
+exports.conn = conn;
+exports.await = await;
+exports.defer = defer;

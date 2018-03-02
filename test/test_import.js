@@ -1,12 +1,8 @@
-var test = require("./test_base");
+var conn = require("../db/db");
+console.log("wait....");
 
-function test(){
-  fiber(function() {
-    console.log("123".contains("1"));
-    var result = await( conn.query( "select * from bot_acct_mng ", defer() )  );
-    console.log(result);
-    end();
-  });
-}
-
-test.start( test );
+var result = conn.query( "select * from bot_acct_mng ",
+  function(err, result){
+      console.log(result);
+  }
+);

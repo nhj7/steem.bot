@@ -266,11 +266,11 @@ function getTopParentContent(author, permlink){
   return result;
 }
 
-function insertWrkList(author, permlink, comment){
+function insertWrkList(author, permlink, comment, src_author, src_permlink){
   logger.info("insertWrkList : " + author + ", " + author + ","+comment );
   var inQry = "insert into bot_wrk_list "
-    + "(dvcd, author, perm_link, comment, wrk_status, vote_yn ) "
-    + "values( ?, ?, ?, ?, ?, ?) ";
+    + "(dvcd, author, permlink, comment, wrk_status, vote_yn, src_author, src_permlink ) "
+    + "values( ?, ?, ?, ?, ?, ?, ?, ? ) ";
   var params = [
       1  // dvcd
       , author // author
@@ -278,12 +278,14 @@ function insertWrkList(author, permlink, comment){
       , comment // comment
       , "1" // wrk_status 0:complete, 1:ready, 9:error
       , "N" // vote_yn
+      , src_author
+      , src_permlink
   ];
   var inRslt = await(conn.query(inQry, params, defer() ));
   logger.info(inRslt);
 }
 
-function mergeSvcAcctMng(dvcd, acct_nm, perm_link, useYn){
+function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn){
   var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
   logger.info("selQry : " + selQry);
   var selRslt = await(conn.query(selQry, defer() ));
@@ -291,9 +293,9 @@ function mergeSvcAcctMng(dvcd, acct_nm, perm_link, useYn){
   var regQry = "";
   // 있으면 업데이트
   if( selRslt.length > 0 ){
-    regQry = "update svc_acct_mng set use_yn = '"+ useYn +"' , perm_link = '" + perm_link + "' where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
+    regQry = "update svc_acct_mng set use_yn = '"+ useYn +"' , permlink = '" + permlink + "' where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
   }else{  // 없으면 등록!!!
-    regQry = "insert into svc_acct_mng ( dvcd, acct_nm, perm_link, use_yn ) values ("+dvcd+", '"+ acct_nm +"', '" + perm_link + "', '"+useYn+"' ) ";
+    regQry = "insert into svc_acct_mng ( dvcd, acct_nm, permlink, use_yn ) values ("+dvcd+", '"+ acct_nm +"', '" + permlink + "', '"+useYn+"' ) ";
   }
   logger.info("regQry : " + regQry);
   var regRslt = await(conn.query(regQry, defer() ));
@@ -324,6 +326,18 @@ function srchNewPostAndRegCmnt(source, target){
   if( source.author == target.acct_nm || source.parent_author == target.acct_nm ){
     return;
   }
+
+  var exQry = " select * from bot_wrk_list ";
+  exQry += " where 1=1 ";
+  exQry += " and reg_dttm > DATE_ADD(now(), INTERVAL -7 day)";
+  exQry += " and author = ?";
+  exQry += " and src_author = ?";
+  exQry += " and src_permlink = ?";
+  var exRslt = await(conn.query(exQry, [target.acct_nm, source.author, source.permlink] , defer() ));
+  if( exRslt.length > 0 ){
+    logger.error("이미 달려서 댓글 달지마삼...");
+    return;
+  }
   //logger.info(source);
   //logger.info(target);
   var originalPost;
@@ -335,7 +349,7 @@ function srchNewPostAndRegCmnt(source, target){
   var comment = "["+ source.author + "](/@"+source.author+")님이 ";
   comment += target.acct_nm + "님을 멘션하셨습니다. 아래에서 확인해볼까요? ^^ <br />";
   var pull_link = "/@"+originalPost.author+"/"+originalPost.permlink;
-  comment += ("["+ originalPost.title + "](" + pull_link +")");
+  comment += ("["+ originalPost.title + "](" + pull_link +"#@"+source.author+"/"+source.permlink+")");
   logger.info(comment);
   var lastCmnt = await(steem.api.getDiscussionsByAuthorBeforeDate(target.acct_nm, null, '2100-01-01T00:00:00', 1, defer()));
   if( lastCmnt.length == 0 ){
@@ -350,7 +364,7 @@ function srchNewPostAndRegCmnt(source, target){
         return;
       }
   }
-  insertWrkList(lastCmnt[0].author, lastCmnt[0].permlink, comment);
+  insertWrkList(lastCmnt[0].author, lastCmnt[0].permlink, comment, source.author, source.permlink);
 }
 
 var sleepTm = 1000;
@@ -563,7 +577,7 @@ function wrkBot(){
           var wif = botList[i].posting_key;
           var author = botList[i].id;
           var parentAuthor = wrkList[i].author;
-          var parentPermlink = wrkList[i].perm_link;
+          var parentPermlink = wrkList[i].permlink;
           var permlink = steem.formatter.commentPermlink(parentAuthor.replace(/./gi,"-"), parentPermlink);
           var title = "";
           var body = wrkList[i].comment;
