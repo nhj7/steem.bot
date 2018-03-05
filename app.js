@@ -579,7 +579,7 @@ function wrkBot(){
       //   return;
       // }
       var chk = true;
-      //logger.info("wrkBot execute." );
+      logger.info("wrkBot run" );
 
       try{
         var selWrkQry = " select * from bot_wrk_list where wrk_status <> 0 order by seq asc ";
