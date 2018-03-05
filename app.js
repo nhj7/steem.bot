@@ -189,18 +189,23 @@ function awaitRequest(param, callback){
   });
 }
 
-function exeQuery(sql , callback ){
-  return exeQuery(sql, [], callback);
+function exeQuery(sql ){
+  return exeQuery(sql, []);
 }
 
-function exeQuery(sql, params, callback){
-  console.log("query.sql : "+sql );
-  pool.getConnection(function(err,connection){
-    var result = connection.query(sql , params , function (err, rows) {
-      connection.release();
-      callback(err, result);
-    });
-  });
+function exeQuery(sql, params){
+  //console.log("query.sql : "+sql );
+  var conn = await(pool.getConnection( defer() ));
+  var rows = await(conn.query(sql, params, defer() ));
+  //console.log( rows );
+  conn.release();
+  return rows;
+
+    // var result = connection.query(sql , params , function (err, rows) {
+    //   connection.release();
+    //   callback(err, result);
+    // });
+  //});
 }
 
 function inqryGoogle( query ){
@@ -301,14 +306,14 @@ function insertWrkList(author, permlink, comment, src_author, src_permlink){
       , src_author
       , src_permlink
   ];
-  var inRslt = await(exeQuery(inQry, params, defer() ));
+  var inRslt = (exeQuery(inQry, params ));
   logger.info(inRslt);
 }
 
 function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn){
   var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
   logger.info("selQry : " + selQry);
-  var selRslt = await(exeQuery(selQry, defer() ));
+  var selRslt = (exeQuery(selQry ));
   logger.info(selRslt);
   var regQry = "";
   // 있으면 업데이트
@@ -318,7 +323,7 @@ function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn){
     regQry = "insert into svc_acct_mng ( dvcd, acct_nm, permlink, use_yn ) values ("+dvcd+", '"+ acct_nm +"', '" + permlink + "', '"+useYn+"' ) ";
   }
   logger.info("regQry : " + regQry);
-  var regRslt = await(exeQuery(regQry, defer() ));
+  var regRslt = (exeQuery(regQry ));
   logger.info(regRslt);
 }
 
@@ -338,7 +343,7 @@ function selectSvcAccMng(dvcd, author){
   }
   var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and use_yn = 'Y' and acct_nm in ( "+author+" ) ";
   logger.info( "selQry : "+selQry );
-  var selRslt = await(exeQuery(selQry, [] , defer() ));
+  var selRslt = exeQuery(selQry, [] , defer());
   return selRslt;
 }
 
@@ -353,7 +358,10 @@ function srchNewPostAndRegCmnt(source, target){
   exQry += " and author = ?";
   exQry += " and src_author = ?";
   exQry += " and src_permlink = ?";
-  var exRslt = await(exeQuery(exQry, [target.acct_nm, source.author, source.permlink] , defer() ));
+
+  logger.error(source.author + " , " + source.permlink);
+
+  var exRslt = (exeQuery(exQry, [target.acct_nm, source.author, source.permlink] ));
   if( exRslt.length > 0 ){
     logger.error("이미 달려서 댓글 달지마삼...");
     return;
@@ -368,8 +376,8 @@ function srchNewPostAndRegCmnt(source, target){
   }
   var comment = "["+ source.author + "](/@"+source.author+")님이 ";
   comment += target.acct_nm + "님을 멘션하셨습니다. 아래에서 확인해볼까요? ^^ <br />";
-  var pull_link = "/@"+originalPost.author+"/"+originalPost.permlink;
-  comment += ("["+ originalPost.title + "](" + pull_link +"#@"+source.author+"/"+source.permlink+")");
+  var pull_link = "/"+originalPost.category+"/@"+originalPost.author+"/"+originalPost.permlink+"#@" + source.author+"/"+source.permlink ;
+  comment += ("["+ originalPost.title + "](" + pull_link +")");
   logger.info(comment);
   var lastCmnt = await(steem.api.getDiscussionsByAuthorBeforeDate(target.acct_nm, null, '2100-01-01T00:00:00', 1, defer()));
   if( lastCmnt.length == 0 ){
@@ -378,12 +386,14 @@ function srchNewPostAndRegCmnt(source, target){
   //logger.error(lastCmnt);
   if( lastCmnt.length == 0 ) return;
   logger.info(lastCmnt);
-  var reples = await(steem.api.getContentReplies(lastCmnt[0].author, lastCmnt[0].permlink, defer()));
-  for(var rpIdx = 0; rpIdx < reples.length;rpIdx++){
-      if( reples[rpIdx].body.indexOf(pull_link) > -1 ){
-        return;
-      }
-  }
+
+  // var reples = await(steem.api.getContentReplies(lastCmnt[0].author, lastCmnt[0].permlink, defer()));
+  // for(var rpIdx = 0; rpIdx < reples.length;rpIdx++){
+  //     if( reples[rpIdx].body.indexOf(pull_link) > -1 ){
+  //       return;
+  //     }
+  // }
+
   insertWrkList(lastCmnt[0].author, lastCmnt[0].permlink, comment, source.author, source.permlink);
 }
 
@@ -576,10 +586,8 @@ function wrkBot(){
 
       try{
         var selWrkQry = " select * from bot_wrk_list where wrk_status <> 0 order by seq asc ";
-
-        var wrkList = await(exeQuery(selWrkQry, [1] , defer() ));
-        logger.info( wrkList );
-        logger.info("wrkBot execute.2" + wrkList.length );
+        var wrkList = (exeQuery(selWrkQry, [1] ));
+        //logger.info( wrkList );
         if( wrkList == null || wrkList.length <= 0 ){
           return;
         }
@@ -589,7 +597,7 @@ function wrkBot(){
           + " and last_comment_dttm < DATE_ADD(now(), INTERVAL -20 second) "
           + " order by last_comment_dttm asc ";
 
-        var botList = await(exeQuery(selBotQry, [1] , defer() ));
+        var botList = (exeQuery(selBotQry, [1] ));
         if( botList == null && botList.length <= 0 ){
           return;
         }
@@ -609,10 +617,10 @@ function wrkBot(){
           logger.error(commentRslt);
 
           var botUpQry = "update bot_acct_mng set last_comment_dttm = now() where seq = ? and id = ? " ;
-          var botUpRslt = await(exeQuery(botUpQry, [ botList[i].seq, botList[i].id ], defer() ));
+          var botUpRslt = (exeQuery(botUpQry, [ botList[i].seq, botList[i].id ] ));
 
           var wrkUpQry = "update bot_wrk_list set wrk_status = 0, wrk_dttm = now() where seq = ?" ;
-          var wrkUpRslt = await(exeQuery(wrkUpQry, [ wrkList[i].seq  ], defer() ));
+          var wrkUpRslt = (exeQuery(wrkUpQry, [ wrkList[i].seq  ] ));
         }
       }catch(err){
         logger.error("wrkBot error : ", err);
@@ -643,11 +651,10 @@ process.on('uncaughtException', function(err) {
 });
 
 function startBot(){
-//  blockBot();
+  blockBot();
   wrkBot();
 }
 
-connectDatabase();
 startBot();
 
 // 1. 계정가입을 받기 위한 walletBot
