@@ -211,7 +211,7 @@ function exeQuery(sql, params){
 function inqryGoogle( query ){
   const queryString = "site:steemit.com " + query;
   const queryStringEscape = qs.escape(queryString);
-  console.log(queryStringEscape);
+  //console.log(queryStringEscape);
   const items = new Array();
   const arrQs = queryString.split(" ");
   const inqryCnt = 1;
@@ -307,14 +307,14 @@ function insertWrkList(author, permlink, comment, src_author, src_permlink){
       , src_permlink
   ];
   var inRslt = (exeQuery(inQry, params ));
-  logger.info(inRslt);
+  //logger.info(inRslt);
 }
 
 function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn){
   var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
-  logger.info("selQry : " + selQry);
+  //logger.info("selQry : " + selQry);
   var selRslt = (exeQuery(selQry ));
-  logger.info(selRslt);
+  //logger.info(selRslt);
   var regQry = "";
   // 있으면 업데이트
   if( selRslt.length > 0 ){
@@ -322,9 +322,9 @@ function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn){
   }else{  // 없으면 등록!!!
     regQry = "insert into svc_acct_mng ( dvcd, acct_nm, permlink, use_yn ) values ("+dvcd+", '"+ acct_nm +"', '" + permlink + "', '"+useYn+"' ) ";
   }
-  logger.info("regQry : " + regQry);
+  //logger.info("regQry : " + regQry);
   var regRslt = (exeQuery(regQry ));
-  logger.info(regRslt);
+  //logger.info(regRslt);
 }
 
 function getUseYn(body , ko, en){
@@ -342,7 +342,7 @@ function selectSvcAccMng(dvcd, author){
     author = "\""+ author + "\"";
   }
   var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and use_yn = 'Y' and acct_nm in ( "+author+" ) ";
-  logger.info( "selQry : "+selQry );
+  //logger.info( "selQry : "+selQry );
   var selRslt = exeQuery(selQry, [] , defer());
   return selRslt;
 }
@@ -385,15 +385,13 @@ function srchNewPostAndRegCmnt(source, target){
   }
   //logger.error(lastCmnt);
   if( lastCmnt.length == 0 ) return;
-  logger.info(lastCmnt);
-
+  logger.info("lastCmnt : "+lastCmnt.title);
   // var reples = await(steem.api.getContentReplies(lastCmnt[0].author, lastCmnt[0].permlink, defer()));
   // for(var rpIdx = 0; rpIdx < reples.length;rpIdx++){
   //     if( reples[rpIdx].body.indexOf(pull_link) > -1 ){
   //       return;
   //     }
   // }
-
   insertWrkList(lastCmnt[0].author, lastCmnt[0].permlink, comment, source.author, source.permlink);
 }
 
@@ -425,7 +423,6 @@ try {
         blockBot();
         return;
       }
-
       cntNodeErr = 0;
       lastBlockNumber = blockNumber;
       while( lastBlockNumber > workBlockNumber ){
@@ -582,7 +579,7 @@ function wrkBot(){
       //   return;
       // }
       var chk = true;
-      logger.info("wrkBot execute." );
+      //logger.info("wrkBot execute." );
 
       try{
         var selWrkQry = " select * from bot_wrk_list where wrk_status <> 0 order by seq asc ";
