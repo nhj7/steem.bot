@@ -117,7 +117,7 @@ function connectDatabase() {
   //     setTimeout(connectDatabase, 2000);
   //   }
   //   setInterval(function () {
-  //       exeQuery('SELECT 1');
+  //       query('SELECT 1');
   //   }, 60000);
   //   startBot();
   // });
@@ -189,11 +189,11 @@ function awaitRequest(param, callback){
   });
 }
 
-function exeQuery(sql ){
-  return exeQuery(sql, []);
+function query(sql ){
+  return query(sql, []);
 }
 
-function exeQuery(sql, params){
+function query(sql, params){
   //console.log("query.sql : "+sql );
   var conn = await(pool.getConnection( defer() ));
   var rows = await(conn.query(sql, params, defer() ));
@@ -306,14 +306,14 @@ function insertWrkList(author, permlink, comment, src_author, src_permlink){
       , src_author
       , src_permlink
   ];
-  var inRslt = (exeQuery(inQry, params ));
+  var inRslt = (query(inQry, params ));
   //logger.info(inRslt);
 }
 
 function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn){
   var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
   //logger.info("selQry : " + selQry);
-  var selRslt = (exeQuery(selQry ));
+  var selRslt = (query(selQry ));
   //logger.info(selRslt);
   var regQry = "";
   // 있으면 업데이트
@@ -323,7 +323,7 @@ function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn){
     regQry = "insert into svc_acct_mng ( dvcd, acct_nm, permlink, use_yn ) values ("+dvcd+", '"+ acct_nm +"', '" + permlink + "', '"+useYn+"' ) ";
   }
   //logger.info("regQry : " + regQry);
-  var regRslt = (exeQuery(regQry ));
+  var regRslt = (query(regQry ));
   //logger.info(regRslt);
 }
 
@@ -343,7 +343,7 @@ function selectSvcAccMng(dvcd, author){
   }
   var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and use_yn = 'Y' and acct_nm in ( "+author+" ) ";
   //logger.info( "selQry : "+selQry );
-  var selRslt = exeQuery(selQry, [] , defer());
+  var selRslt = query(selQry, []);
   return selRslt;
 }
 
@@ -361,7 +361,7 @@ function srchNewPostAndRegCmnt(source, target){
 
   logger.error(source.author + " , " + source.permlink);
 
-  var exRslt = (exeQuery(exQry, [target.acct_nm, source.author, source.permlink] ));
+  var exRslt = (query(exQry, [target.acct_nm, source.author, source.permlink] ));
   if( exRslt.length > 0 ){
     logger.error("이미 달려서 댓글 달지마삼...");
     return;
@@ -583,7 +583,7 @@ function wrkBot(){
 
       try{
         var selWrkQry = " select * from bot_wrk_list where wrk_status <> 0 order by seq asc ";
-        var wrkList = (exeQuery(selWrkQry, [1] ));
+        var wrkList = (query(selWrkQry, [1] ));
         //logger.info( wrkList );
         if( wrkList == null || wrkList.length <= 0 ){
           return;
@@ -594,7 +594,7 @@ function wrkBot(){
           + " and last_comment_dttm < DATE_ADD(now(), INTERVAL -20 second) "
           + " order by last_comment_dttm asc ";
 
-        var botList = (exeQuery(selBotQry, [1] ));
+        var botList = (query(selBotQry, [1] ));
         if( botList == null && botList.length <= 0 ){
           return;
         }
@@ -614,10 +614,10 @@ function wrkBot(){
           logger.error(commentRslt);
 
           var botUpQry = "update bot_acct_mng set last_comment_dttm = now() where seq = ? and id = ? " ;
-          var botUpRslt = (exeQuery(botUpQry, [ botList[i].seq, botList[i].id ] ));
+          var botUpRslt = (query(botUpQry, [ botList[i].seq, botList[i].id ] ));
 
           var wrkUpQry = "update bot_wrk_list set wrk_status = 0, wrk_dttm = now() where seq = ?" ;
-          var wrkUpRslt = (exeQuery(wrkUpQry, [ wrkList[i].seq  ] ));
+          var wrkUpRslt = (query(wrkUpQry, [ wrkList[i].seq  ] ));
         }
       }catch(err){
         logger.error("wrkBot error : ", err);
@@ -652,17 +652,34 @@ function startBot(){
   wrkBot();
 }
 
-startBot();
+//startBot();
 
 // 1. 계정가입을 받기 위한 walletBot
 function walletBot(){
+  fiber(function() {
     try {
+      var mngList = query(" select * from acct_hist_mng ");
+      logger.error(mngList );
+      for(var idxMng = 0; idxMng < mngList.length; idxMng++){
+        logger.error("acct_nm : " + mngList[idxMng].acct_nm );
+        var transaction = await(steem.api.getAccountHistory(mngList[idxMng].acct_nm, mngList[idxMng].last_num , 0, defer()));
+        //logger.error( transaction );
+        if( transaction[0][1].op[0] == 'transfer' ){
+          console.log("num : "+transaction[0][0]);
+          console.log("type : "+transaction[0][1].op[0]);
+          console.log("info : "+JSON.stringify(transaction[0][1].op[1]));
+        }
 
+        var upRslt = query(" update acct_hist_mng set last_num = ? where acct_nm = ? " , [ ++mngList[idxMng].last_num, mngList[idxMng].acct_nm] );
+
+      }
     }catch(err){
-      logger.error(err, "졸라 에러남.");
+      logger.error(err, "WalletBot Error!");
+
+    }finally{
+      setImmediate(function(){walletBot()});
     }
+  });
 }
 
-fiber(function() {
 walletBot();
-});
