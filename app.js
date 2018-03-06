@@ -108,30 +108,10 @@ const mysql = require('mysql'); // mysql lib load.
 // mysql create connection!!
 var conn;
 var pool;
-function connectDatabase() {
-  //conn = mysql.createConnection(db_config);
+function createPool() {
   pool = mysql.createPool(db_config);
-  // conn.connect(function(err) {
-  //   if(err) {
-  //     logger.error('error when connecting to db:', err);
-  //     setTimeout(connectDatabase, 2000);
-  //   }
-  //   setInterval(function () {
-  //       query('SELECT 1');
-  //   }, 60000);
-  //   startBot();
-  // });
-  // conn.on('error', function(err) {
-  //   logger.error('db error', err);
-  //   if(err.code === 'PROTOCOL_CONNECTION_LOST') {
-  //     connectDatabase();
-  //   } else {
-  //     throw err;
-  //   }
-  // });
 }
-
-connectDatabase();
+createPool();
 
 // steem init!
 const steem = require("steem");
@@ -189,23 +169,17 @@ function awaitRequest(param, callback){
   });
 }
 
-function query(sql ){
-  return query(sql, []);
-}
+// function query(sql ){
+//   return query(sql, []);
+// }
 
 function query(sql, params){
   //console.log("query.sql : "+sql );
   var conn = await(pool.getConnection( defer() ));
   var rows = await(conn.query(sql, params, defer() ));
   //console.log( rows );
-  conn.release();
+  conn.release(); // 반환.
   return rows;
-
-    // var result = connection.query(sql , params , function (err, rows) {
-    //   connection.release();
-    //   callback(err, result);
-    // });
-  //});
 }
 
 function inqryGoogle( query ){
@@ -654,28 +628,84 @@ function startBot(){
 
 //startBot();
 
-// 1. 계정가입을 받기 위한 walletBot
+// transfer내용을 읽는 walletBot
+// acct_hist_mng에 등록된 최종넘버를 기점으로 등록된 계정 별 스팀블럭을 읽는다.
+const hist_limit = 10;    // getAccountHistory limit.
+const walletTerm = 5000; // 10초 체크
 function walletBot(){
   fiber(function() {
     try {
+
+      sleep(walletTerm);
       var mngList = query(" select * from acct_hist_mng ");
-      logger.error(mngList );
+      logger.info(mngList );
       for(var idxMng = 0; idxMng < mngList.length; idxMng++){
-        logger.error("acct_nm : " + mngList[idxMng].acct_nm );
-        var transaction = await(steem.api.getAccountHistory(mngList[idxMng].acct_nm, mngList[idxMng].last_num , 0, defer()));
-        //logger.error( transaction );
-        if( transaction[0][1].op[0] == 'transfer' ){
-          console.log("num : "+transaction[0][0]);
-          console.log("type : "+transaction[0][1].op[0]);
-          console.log("info : "+JSON.stringify(transaction[0][1].op[1]));
+        var lastNum = parseInt(mngList[idxMng].last_num);
+        if( lastNum > 0 ) {
+          lastNum++;
         }
+        var next_num =  lastNum + hist_limit;
+        var histLimit = hist_limit;
+        if( lastNum > hist_limit ){
+          next_num--;
+          histLimit--;
+        }
+        logger.info("acct_nm : " + mngList[idxMng].acct_nm + ", next_num : " + next_num + ", limit : " + histLimit );
 
-        var upRslt = query(" update acct_hist_mng set last_num = ? where acct_nm = ? " , [ ++mngList[idxMng].last_num, mngList[idxMng].acct_nm] );
+        var transactions = await(steem.api.getAccountHistory(mngList[idxMng].acct_nm, next_num , histLimit, defer()));
 
+        for(var idxTr = 0; idxTr < transactions.length;idxTr++){
+          //logger.info( "num : "+transactions[idxTr][0] );
+          if( transactions[idxTr][1].op[0] == 'transfer' ){
+            const trx_id = transactions[idxTr][1].trx_id;
+            const block = transactions[idxTr][1].block;
+            const trx_in_block = transactions[idxTr][1].trx_in_block;
+            const op_in_trx = transactions[idxTr][1].op_in_trx;
+            const virtual_op = transactions[idxTr][1].virtual_op;
+            const trx_timestamp = transactions[idxTr][1].timestamp;
+            const json_transfer = transactions[idxTr][1].op[1];
+            const from = json_transfer.from;
+            const to = json_transfer.to;
+            const type = json_transfer.amount.includes("STEEM")?"STEEM":"SBD";
+            const memo = json_transfer.memo;
+            const amount = parseFloat(json_transfer.amount.replace("STEEM", "").replace("SBD", ""));
+            const num = transactions[idxTr][0];
+
+            var selRslt = query( "select * from transfer where trx_id = ? ", [trx_id] );
+
+            if( selRslt.length > 0 ){
+              logger.warn("already saved this transfer! [" + trx_id +"], from : " + from + ", to : " + to + ", amount : " + amount + ", num : " + num);
+              continue;
+            }
+
+            logger.info( "trx_id : " + trx_id );
+            logger.info( "block : " + block );
+            logger.info( "trx_in_block : " + trx_in_block );
+            logger.info( "op_in_trx : " + op_in_trx );
+            logger.info( "virtual_op : " + virtual_op );
+            logger.info( "trx_timestamp : " + trx_timestamp );
+            logger.info( "from : " + from );
+            logger.info( "to : " + to );
+            logger.info( "amount : " + amount );
+            logger.info( "type : " + type );
+            logger.info( "memo : " + memo );
+
+            var inQry = "insert into transfer ( trx_id, from_acct, to_acct, amount, transfer_type, memo, num "
+            + ", block, trx_in_block, op_in_trx, virtual_op, trx_timestamp ) "
+            + " values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ";
+            var params = [
+              trx_id, from, to, amount, type, memo, num,
+              block, trx_in_block, op_in_trx, virtual_op, trx_timestamp
+            ];
+            var inRslt = query(inQry, params);
+            logger.info(inRslt);
+          }
+          lastNum = transactions[idxTr][0];
+        } // for(var idxTr = 0; idxTr < transactions.length;idxTr++){
+        var upRslt = query(" update acct_hist_mng set last_num = ? where acct_nm = ? " , [ lastNum , mngList[idxMng].acct_nm] );
       }
     }catch(err){
       logger.error(err, "WalletBot Error!");
-
     }finally{
       setImmediate(function(){walletBot()});
     }

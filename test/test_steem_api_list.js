@@ -20,8 +20,8 @@ steem.api.setOptions({url: arrNode[idxNode] });
 //   }
 // );
 // 255
-steem.api.getAccountHistory("steemalls", -1, 500, function(err, result) {
-  //console.log(err, result);
+steem.api.getAccountHistory("steemalls", 100, 100, function(err, result) {
+  console.log(err, result);
   for(var i = 0; i < result.length;i++){
     //console.log("data : "+JSON.stringify(result[i][1]));
     if( result[i][1].op[0] == 'transfer' ){
