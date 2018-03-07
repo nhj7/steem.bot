@@ -1,4 +1,5 @@
-var steem = require("steem")
+var steem = require("steem");
+var dsteem = require("dsteem");
 var arrNode = [
   'https://api.steemit.com'
   ,'https://steemd.dist.one'
@@ -24,10 +25,39 @@ steem.api.getAccountHistory("steemalls", 100, 100, function(err, result) {
   console.log(err, result);
   for(var i = 0; i < result.length;i++){
     //console.log("data : "+JSON.stringify(result[i][1]));
-    if( result[i][1].op[0] == 'transfer' ){
+    //if( result[i][1].op[0] == 'transfer' ){
       console.log("num : "+result[i][0]);
       console.log("type : "+result[i][1].op[0]);
       console.log("info : "+JSON.stringify(result[i][1].op[1]));
-    }
+    //}
   }
 });
+
+function getCreateAccountFee(){
+  steem.api.getConfig(function(err, config) {
+    if(err){
+      console.log(err, config);
+      throw new Error(err);
+    }
+    //console.log(err, config);
+    steem.api.getChainProperties(function(err2, chainProps) {
+      if(err2){
+        console.log(err2, chainProps);
+        throw new Error(err2);
+      }
+      //console.log(err2, chainProps);
+      var ratio = config['STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER'];
+
+      console.log(chainProps.account_creation_fee + ", " + ratio );
+
+      var fee = parseFloat(chainProps.account_creation_fee.split(" ")[0]) * parseFloat(ratio);
+      //var fee = dsteem.Asset.from(chainProps.account_creation_fee).multiply(ratio);
+
+      var feeString = fee + " " + chainProps.account_creation_fee.split(" ")[1];
+
+      console.log( "feeString : " + feeString);
+    });
+  });
+}
+
+getCreateAccountFee();

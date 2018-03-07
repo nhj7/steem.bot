@@ -20,6 +20,7 @@
     "async": "^2.6.0",
     "charset": "^1.0.1",
     "cheerio": "^1.0.0-rc.2",
+    "dsteem": "^0.8.7",
     "fibers": "^2.0.0",
     "iconv-lite": "^0.4.19",
     "mysql": "^2.15.0",

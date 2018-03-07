@@ -635,8 +635,7 @@ const walletTerm = 5000; // 10초 체크
 function walletBot(){
   fiber(function() {
     try {
-
-      sleep(walletTerm);
+      //sleep(walletTerm);
       var mngList = query(" select * from acct_hist_mng ");
       logger.info(mngList );
       for(var idxMng = 0; idxMng < mngList.length; idxMng++){
@@ -651,30 +650,31 @@ function walletBot(){
           histLimit--;
         }
         logger.info("acct_nm : " + mngList[idxMng].acct_nm + ", next_num : " + next_num + ", limit : " + histLimit );
-
         var transactions = await(steem.api.getAccountHistory(mngList[idxMng].acct_nm, next_num , histLimit, defer()));
-
         for(var idxTr = 0; idxTr < transactions.length;idxTr++){
           //logger.info( "num : "+transactions[idxTr][0] );
-          if( transactions[idxTr][1].op[0] == 'transfer' ){
-            const trx_id = transactions[idxTr][1].trx_id;
-            const block = transactions[idxTr][1].block;
-            const trx_in_block = transactions[idxTr][1].trx_in_block;
-            const op_in_trx = transactions[idxTr][1].op_in_trx;
-            const virtual_op = transactions[idxTr][1].virtual_op;
-            const trx_timestamp = transactions[idxTr][1].timestamp;
-            const json_transfer = transactions[idxTr][1].op[1];
-            const from = json_transfer.from;
-            const to = json_transfer.to;
-            const type = json_transfer.amount.includes("STEEM")?"STEEM":"SBD";
-            const memo = json_transfer.memo;
-            const amount = parseFloat(json_transfer.amount.replace("STEEM", "").replace("SBD", ""));
-            const num = transactions[idxTr][0];
+          const op_type = transactions[idxTr][1].op[0];
+          const trx_id = transactions[idxTr][1].trx_id;
+          const block = transactions[idxTr][1].block;
+          const trx_in_block = transactions[idxTr][1].trx_in_block;
+          const op_in_trx = transactions[idxTr][1].op_in_trx;
+          const virtual_op = transactions[idxTr][1].virtual_op;
+          const trx_timestamp = transactions[idxTr][1].timestamp;
+          const json_metadata = transactions[idxTr][1].op[1];
+          const current_num = transactions[idxTr][0];
+
+          if( op_type == 'transfer' ){
+            const from = json_metadata.from;
+            const to = json_metadata.to;
+            const type = json_metadata.amount.includes("STEEM")?"STEEM":"SBD";
+            const memo = json_metadata.memo;
+            const amount = parseFloat(json_metadata.amount.replace("STEEM", "").replace("SBD", ""));
+
 
             var selRslt = query( "select * from transfer where trx_id = ? ", [trx_id] );
 
             if( selRslt.length > 0 ){
-              logger.warn("already saved this transfer! [" + trx_id +"], from : " + from + ", to : " + to + ", amount : " + amount + ", num : " + num);
+              logger.warn("already saved this transfer! [" + trx_id +"], from : " + from + ", to : " + to + ", amount : " + amount + ", current_num : " + current_num);
               continue;
             }
 
@@ -694,22 +694,173 @@ function walletBot(){
             + ", block, trx_in_block, op_in_trx, virtual_op, trx_timestamp ) "
             + " values( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ";
             var params = [
-              trx_id, from, to, amount, type, memo, num,
+              trx_id, from, to, amount, type, memo, current_num,
               block, trx_in_block, op_in_trx, virtual_op, trx_timestamp
             ];
             var inRslt = query(inQry, params);
             logger.info(inRslt);
+          } //if( op_type == 'transfer' ){
+          else if( op_type == 'account_create' ){
+            // info : {"fee":"6.000 STEEM","creator":"nhj12311","new_account_name":"steemalls","owner":{"weight_threshold":1,"account_auths":[],"key_auths":[["STM5r8XxhVZaWjqHjwqfmRpKEjfACRv2w4UQS7LrfaNQZcBE3U63i",1]]},"active":{"weight_threshold":1,"account_auths":[],"key_auths":[["STM8YGwdKDVdd6VCEiFo9914MSh57GqsZfcpYG2jpp4YAUPapXsFL",1]]},"posting":{"weight_threshold":1,"account_auths":[],"key_auths":[["STM7QkY2PCRHPB9xw4Gd42LYdVj9dGvecfFuofVMcPazRG7cNhKFw",1]]},"memo_key":"STM5PqVq1kQB6TfSad7Ahh2QSY43SCvPPKWYdiTRHzdSsaBD3CQdt","json_metadata":""}
+            const fee = json_metadata.fee;
+            const creator = json_metadata.creator;
+            const new_account_name = json_metadata.new_account_name;
+            const create_timestamp = json_metadata.timestamp;
+
+            var selRslt = query( "select * from account_create where trx_id = ? ", [trx_id] );
+            if( selRslt.length > 0 ){
+              logger.warn("already saved this account_create! [" + trx_id +"], from : " + from + ", to : " + to + ", amount : " + amount + ", current_num : " + current_num);
+              continue;
+            }
+
+            var inQry = " insert into account_create "
+            + " ( trx_id, creator, new_account_name , fee, trx_timestamp) "
+            + " values( ?, ?, ?, ?, ? ) ";
+            var params = [trx_id, creator, new_account_name, fee, trx_timestamp ];
+            var inRslt = query(inQry, params );
+            logger.info("save account_create : " + params.join(", "));
           }
+
           lastNum = transactions[idxTr][0];
+
         } // for(var idxTr = 0; idxTr < transactions.length;idxTr++){
+        //lastNum += histLimit;
         var upRslt = query(" update acct_hist_mng set last_num = ? where acct_nm = ? " , [ lastNum , mngList[idxMng].acct_nm] );
       }
     }catch(err){
       logger.error(err, "WalletBot Error!");
     }finally{
-      setImmediate(function(){walletBot()});
+      setTimeout(function(){walletBot()}, walletTerm );
     }
   });
 }
 
-walletBot();
+//walletBot();
+
+// account_create_bot start
+//
+//
+function getCreateAccountFee(){
+  var config = await(steem.api.getConfig( defer() ));
+  //console.log( config );
+  var chainProps = await(steem.api.getChainProperties( defer() ));
+  var ratio = config['STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER'];
+  //console.log(chainProps.account_creation_fee + ", " + ratio );
+  var fee = parseFloat(chainProps.account_creation_fee.split(" ")[0]) * (ratio);
+  var feeString = fee + " " + chainProps.account_creation_fee.split(" ")[1];
+  //console.log( "feeString : " + feeString );
+  return feeString;
+}
+
+function account_create_bot(){
+  fiber(function() {
+    try{
+
+      const fee = getCreateAccountFee();
+
+      logger.info("account_create_bot execute. account_create fee : " + fee );
+
+      var selQry = " select * from bot_acct_mng where 1=1 and instr(arr_dvcd, ?) > 0 ";
+      var svcBotList = query(selQry, [4] );
+      for( var idxBot = 0; idxBot < (Array.isArray(svcBotList)?svcBotList.length:1) ; idxBot++  ){
+        var botInfo = Array.isArray(svcBotList) ? svcBotList[idxBot] : svcBotList;
+        logger.info(botInfo);
+
+        selQry = " select * from transfer where 1=1 and wrk_status = 1 and to_acct = ? order by reg_dttm asc "; // 1 : wait, 0 : complete, 9 : error
+        var wrkObjList = query(selQry , [botInfo.id] );
+
+        for( var idxWrk = 0; idxWrk < (Array.isArray(wrkObjList)?wrkObjList.length:1) ; idxWrk++  ){
+          var wrkInfo = Array.isArray(wrkObjList) ? wrkObjList[idxWrk] : wrkObjList;
+          logger.info( wrkInfo );
+          var wrkStatus = 1;
+          var wrkMsg;
+          try{
+            const memo_metadata = JSON.parse(wrkInfo.memo.replace(/\'/gi, "\""));
+
+            if( memo_metadata.email
+              && memo_metadata.account ){
+                logger.info( memo_metadata );
+            }else{
+              var memoStr;
+              if( wrkInfo.memo.length > 200){
+                memoStr = wrkInfo.memo.substring(0, 200);
+              }
+              wrkMsg = "형식 맞지 않음. [" + memoStr +"]";
+              throw new Error(wrkMsg);
+            }
+            if( parseFloat(wrkInfo.amount) < parseFloat( fee.split(" ")[0] ) ){
+              wrkMsg = "금액이 부족함. amount : " + wrkInfo.amount +", fee : " + fee;
+              throw new Error( wrkMsg );
+            }
+
+
+            // 생성 하고 이메일 발송하기!
+            const newAccountName = memo_metadata.account;
+            var newAccountPassword = steem.formatter.createSuggestedPassword();
+        		var roles = ["POSTING", "ACTIVE", "OWNER", "MEMO"];
+
+        		var arrPublicKey = steem.auth.generateKeys(newAccountName, newAccountPassword, roles);
+        		var arrPrivateKey = steem.auth.getPrivateKeys(newAccountName, newAccountPassword, roles);
+            var owner = {
+        			weight_threshold: 1,
+        			account_auths: [],
+        			key_auths: [[ arrPublicKey["OWNER"] , 1]]
+        		};
+        		var active = {
+        			weight_threshold: 1,
+        			account_auths: [],
+        			key_auths: [[arrPublicKey["ACTIVE"], 1]]
+        		};
+        		var posting = {
+        			weight_threshold: 1,
+        			account_auths: [],
+        			key_auths: [[arrPublicKey["POSTING"], 1]]
+        		};
+            var jsonMetadata = '';
+            const creatorWif = "";
+
+            logger.info("이제 만들어줘볼까??");
+
+            var result = await(steem.broadcast.accountCreate(creatorWif, fee, creator,
+      						newAccountName, owner, active, posting, arrPublicKey["MEMO"],
+      						jsonMetadata, defer()));
+            logger.error(result);
+
+            wrkStatus = 0;
+            wrkMsg = "생성 완료. owner key : []";
+          }catch(err){
+            logger.error( err, "memo syntax error!" );
+            wrkStatus = 9;
+
+          }finally{
+            var upQry = " update transfer set wrk_status = ? , wrk_msg = ? where trx_id = ? ";
+            var params = [ wrkStatus, wrkMsg, wrkInfo.trx_id ];
+            logger.info("update params : " + params.join(","));
+            var upRslt = query(upQry, params );
+            logger.info(upRslt);
+          }
+        } // for( var idxWrk = 0; idxWrk < (Array.isArray(wrkObjList)?wrkObjList.length:1) ; idxWrk++  ){
+      } // for( var idxBot = 0; idxBot < (Array.isArray(svcBotList)?svcBotList.length:1) ; idxBot++  ){
+
+    }catch(err){
+      logger.error(err, "account_create_bot Error!");
+    }finally{
+      setTimeout(function(){account_create_bot()}, 2000 );
+    }
+  });
+}
+
+account_create_bot();
+
+// prototype_bot
+function prototype_bot(){
+  fiber(function() {
+    try{
+
+    }catch(e){
+      logger.error(err, "WalletBot Error!");
+    }finally{
+      //setTimeout(function(){prototype_bot()}, 1000 );
+    }
+  });
+}
