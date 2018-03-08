@@ -632,13 +632,6 @@ process.on('uncaughtException', function(err) {
     process.exit(1);
 });
 
-function startBot(){
-  blockBot();
-  wrkBot();
-}
-
-startBot();
-
 // transfer내용을 읽는 walletBot
 // acct_hist_mng에 등록된 최종넘버를 기점으로 등록된 계정 별 스팀블럭을 읽는다.
 const hist_limit = 10;    // getAccountHistory limit.
@@ -746,7 +739,7 @@ function walletBot(){
   });
 }
 
-//walletBot();
+
 
 // account_create_bot start
 //
@@ -779,7 +772,7 @@ function account_create_bot(){
 
         selQry = " select * from transfer where 1=1 and wrk_status = 1 and to_acct = ? order by reg_dttm asc "; // 1 : wait, 0 : complete, 9 : error
         var wrkObjList = query(selQry , [botInfo.id] );
-
+        logger.info( wrkObjList );
         for( var idxWrk = 0; idxWrk < (Array.isArray(wrkObjList)?wrkObjList.length:1) ; idxWrk++  ){
           var wrkInfo = Array.isArray(wrkObjList) ? wrkObjList[idxWrk] : wrkObjList;
           logger.info( wrkInfo );
@@ -796,17 +789,25 @@ function account_create_bot(){
               if( wrkInfo.memo.length > 200){
                 memoStr = wrkInfo.memo.substring(0, 200);
               }
-              wrkMsg = "형식 맞지 않음. [" + memoStr +"]";
+              wrkMsg = "형식 맞지 않음(memo syntax error). [" + memoStr +"]";
               throw new Error(wrkMsg);
             }
             if( parseFloat(wrkInfo.amount) < parseFloat( fee.split(" ")[0] ) ){
-              wrkMsg = "금액이 부족함. amount : " + wrkInfo.amount +", fee : " + fee;
+              wrkMsg = "금액이 부족함(). amount : " + wrkInfo.amount +", fee : " + fee;
               throw new Error( wrkMsg );
             }
 
 
             // 생성 하고 이메일 발송하기!
+            var creator = botInfo.id;
             const newAccountName = memo_metadata.account;
+
+            var existsAccount = steem.api.getAccounts([newAccountName], defer());
+            if( existsAccount.length > 0 ){
+              wrkMsg = "[" + existsAccount + "] This account already exists. ";
+              throw new Error( wrkMsg );
+            }
+
             var newAccountPassword = steem.formatter.createSuggestedPassword();
         		var roles = ["POSTING", "ACTIVE", "OWNER", "MEMO"];
 
@@ -828,9 +829,9 @@ function account_create_bot(){
         			key_auths: [[arrPublicKey["POSTING"], 1]]
         		};
             var jsonMetadata = '';
-            const creatorWif = "";
+            const creatorWif = "123123123";
 
-            logger.info("이제 만들어줘볼까??");
+            logger.info("이제 만들어줘볼까?? newAccountName : " + newAccountName + ", owner key : ["+arrPrivateKey["OWNER"]+"] ");
 
             var result = await(steem.broadcast.accountCreate(creatorWif, fee, creator,
       						newAccountName, owner, active, posting, arrPublicKey["MEMO"],
@@ -838,9 +839,10 @@ function account_create_bot(){
             logger.error(result);
 
             wrkStatus = 0;
-            wrkMsg = "생성 완료. owner key : []";
+            wrkMsg = "생성 완료. owner key : ["+arrPrivateKey["OWNER"]+"]";
           }catch(err){
-            logger.error( err, "memo syntax error!" );
+            wrkMsg = err.message;
+            logger.error( err, "create process error!" );
             wrkStatus = 9;
 
           }finally{
@@ -854,6 +856,7 @@ function account_create_bot(){
       } // for( var idxBot = 0; idxBot < (Array.isArray(svcBotList)?svcBotList.length:1) ; idxBot++  ){
 
     }catch(err){
+
       logger.error(err, "account_create_bot Error!");
     }finally{
       setTimeout(function(){account_create_bot()}, 2000 );
@@ -861,7 +864,7 @@ function account_create_bot(){
   });
 }
 
-//account_create_bot();
+
 
 // prototype_bot
 function prototype_bot(){
@@ -875,3 +878,12 @@ function prototype_bot(){
     }
   });
 }
+
+function startBot(){
+  blockBot();
+  wrkBot();
+}
+
+//startBot();
+//walletBot();
+account_create_bot();
