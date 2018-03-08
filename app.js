@@ -779,15 +779,33 @@ function account_create_bot(){
           var wrkStatus = 1;
           var wrkMsg;
           try{
-            const memo_metadata = JSON.parse(wrkInfo.memo.replace(/\'/gi, "\""));
+            let memo = wrkInfo.memo.replace(/\'/gi, "\"");
+            // let arrMemo;
+            // if( memo.indexOf("=") > -1 ){
+            //   arrMemo = memo.split("=");
+            // }else if( memo.indexOf(":") > -1 ){
+            //   arrMemo = memo.split(":");
+            // }else{
+            //   wrkMsg = "':', '='의 형태는 필수입니다. ";
+            //   throw new Error(wrkMsg);
+            // }
+            // var jsonStr = "{ ";
+            // for(var idxMemo = 0; idxMemo < arrMemo.length;idxMemo++){
+            //   jsonStr += " \""+arrMemo[0].trim() +"\" "
+            //   if( idxMemo + 1 < arrMemo.length ){
+            //     jsonStr += ":"
+            //   }
+            // }
+            // jsonStr += "}";
+            const memo_metadata = JSON.parse(memo);
 
             if( memo_metadata.email
               && memo_metadata.account ){
                 logger.info( memo_metadata );
             }else{
               var memoStr;
-              if( wrkInfo.memo.length > 200){
-                memoStr = wrkInfo.memo.substring(0, 200);
+              if( memo.length > 200){
+                memoStr = memo.substring(0, 200);
               }
               wrkMsg = "형식 맞지 않음(memo syntax error). [" + memoStr +"]";
               throw new Error(wrkMsg);
@@ -802,9 +820,9 @@ function account_create_bot(){
             var creator = botInfo.id;
             const newAccountName = memo_metadata.account;
 
-            var existsAccount = steem.api.getAccounts([newAccountName], defer());
+            var existsAccount = await(steem.api.getAccounts([newAccountName], defer()));
             if( existsAccount.length > 0 ){
-              wrkMsg = "[" + existsAccount + "] This account already exists. ";
+              wrkMsg = "[" + newAccountName + "] This account already exists. ";
               throw new Error( wrkMsg );
             }
 
