@@ -599,7 +599,7 @@ function wrkBot(){
           vpow = Math.min(vpow / 100, 100).toFixed(2);
           var weight = 100; // 100%
           weight = weight * 100;
-          if( vpow > 96 ){
+          if( vpow > 93 ){
             steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight, function(err, result) { logger.info(err, result); });
           }
 
