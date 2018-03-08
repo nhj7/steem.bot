@@ -553,7 +553,7 @@ function wrkBot(){
       //   return;
       // }
       var chk = true;
-      logger.info("wrkBot run" );
+      logger.info("wrkBot execute" );
 
       try{
         var selWrkQry = " select * from bot_wrk_list where wrk_status <> 0 order by seq asc ";
@@ -592,6 +592,17 @@ function wrkBot(){
 
           var wrkUpQry = "update bot_wrk_list set wrk_status = 0, wrk_dttm = now() where seq = ?" ;
           var wrkUpRslt = (query(wrkUpQry, [ wrkList[i].seq  ] ));
+
+          var arrAcct = await(steem.api.getAccounts([ botList[i].id ], defer() ));
+          var secondsago = (new Date - new Date(arrAcct[0].last_vote_time + "Z")) / 1000;
+          var vpow = arrAcct[0].voting_power + (10000 * secondsago / 432000);
+          vpow = Math.min(vpow / 100, 100).toFixed(2);
+          var weight = 100; // 100%
+          weight = weight * 100;
+          if( vpow > 96 ){
+            steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight, function(err, result) { logger.info(err, result); });
+          }
+
         }
       }catch(err){
         logger.error("wrkBot error : ", err);
@@ -626,7 +637,7 @@ function startBot(){
   wrkBot();
 }
 
-//startBot();
+startBot();
 
 // transfer내용을 읽는 walletBot
 // acct_hist_mng에 등록된 최종넘버를 기점으로 등록된 계정 별 스팀블럭을 읽는다.
@@ -850,7 +861,7 @@ function account_create_bot(){
   });
 }
 
-account_create_bot();
+//account_create_bot();
 
 // prototype_bot
 function prototype_bot(){
