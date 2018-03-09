@@ -871,10 +871,10 @@ function account_create_bot(){
 
             logger.info("이제 만들어줘볼까?? newAccountName : " + newAccountName + ", owner key : ["+arrPrivateKey["OWNER"]+"] ");
 
-            // var result = await(steem.broadcast.accountCreate(creatorWif, fee, creator,
-      			// 			newAccountName, owner, active, posting, arrPublicKey["MEMO"],
-      			// 			jsonMetadata, defer()));
-            // logger.error(result);
+            var result = await(steem.broadcast.accountCreate(creatorWif, fee, creator,
+      						newAccountName, owner, active, posting, arrPublicKey["MEMO"],
+      						jsonMetadata, defer()));
+            logger.error(result);
 
             wrkStatus = 0;
             wrkMsg = "생성 완료. owner key : ["+arrPrivateKey["OWNER"]+"]";
