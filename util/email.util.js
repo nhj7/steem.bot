@@ -2,8 +2,8 @@ var dotenvRslt = require('dotenv').config();
 if (dotenvRslt.error) {
   console.error(dotenvRslt.error);
 }
-//console.log(process.env.account_create_email);
-//console.log(process.env.account_create_password);
+console.log(process.env.account_create_email);
+console.log(process.env.account_create_password);
 
 const nodemailer = require('nodemailer');
 const smtpPool = require('nodemailer-smtp-pool');
