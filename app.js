@@ -887,7 +887,7 @@ function account_create_bot(){
             body += "<br /><br />";
             body += wrkMsg + " </p> ";
             email.send( mailto, title, body, function(err, res ){
-              logger.info(err, res );
+              logger.error(err, res );
             });
           }catch(err){
             wrkMsg = err.message;
@@ -900,7 +900,7 @@ function account_create_bot(){
               body += "(If you have any problems, please contact us by email or blog.) <br /><br />";
               body += wrkMsg + "</p> ";
               email.send( mailto, title, body, function(err, res ){
-                logger.info(err, res );
+                logger.error(err, res );
               });
             }
 
