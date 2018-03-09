@@ -635,7 +635,7 @@ process.on('uncaughtException', function(err) {
 // transfer내용을 읽는 walletBot
 // acct_hist_mng에 등록된 최종넘버를 기점으로 등록된 계정 별 스팀블럭을 읽는다.
 const hist_limit = 10;    // getAccountHistory limit.
-const walletTerm = 5000; // 10초 체크
+const walletTerm = 30000; // 10초 체크
 function walletBot(){
   fiber(function() {
     try {
@@ -713,7 +713,7 @@ function walletBot(){
 
             var selRslt = query( "select * from account_create where trx_id = ? ", [trx_id] );
             if( selRslt.length > 0 ){
-              logger.warn("already saved this account_create! [" + trx_id +"], from : " + from + ", to : " + to + ", amount : " + amount + ", current_num : " + current_num);
+              logger.warn("already saved this account_create! [" + trx_id +"]");
               continue;
             }
 
@@ -750,11 +750,16 @@ function getCreateAccountFee(){
   var chainProps = await(steem.api.getChainProperties( defer() ));
   var ratio = config['STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER'];
   //console.log(chainProps.account_creation_fee + ", " + ratio );
-  var fee = parseFloat(chainProps.account_creation_fee.split(" ")[0]) * (ratio);
+  var fee = ( parseFloat(chainProps.account_creation_fee.split(" ")[0]) * parseFloat(ratio) ) + "";
+  if( fee.indexOf(".") == -1 ){
+    fee += ".000";
+  }
   var feeString = fee + " " + chainProps.account_creation_fee.split(" ")[1];
   //console.log( "feeString : " + feeString );
   return feeString;
 }
+
+var email = require('./util/email.util.js');
 
 function account_create_bot(){
   fiber(function() {
@@ -768,18 +773,26 @@ function account_create_bot(){
       var svcBotList = query(selQry, [4] );
       for( var idxBot = 0; idxBot < (Array.isArray(svcBotList)?svcBotList.length:1) ; idxBot++  ){
         var botInfo = Array.isArray(svcBotList) ? svcBotList[idxBot] : svcBotList;
-        logger.info(botInfo);
+        //logger.info(botInfo);
 
-        selQry = " select * from transfer where 1=1 and wrk_status = 1 and to_acct = ? order by reg_dttm asc "; // 1 : wait, 0 : complete, 9 : error
+        selQry = " select * from transfer where 1=1 and wrk_status = 1 and transfer_type = 'STEEM' and to_acct = ? order by reg_dttm asc "; // 1 : wait, 0 : complete, 9 : error
         var wrkObjList = query(selQry , [botInfo.id] );
-        logger.info( wrkObjList );
+        logger.info( "transfer list : " + wrkObjList.length  );
         for( var idxWrk = 0; idxWrk < (Array.isArray(wrkObjList)?wrkObjList.length:1) ; idxWrk++  ){
           var wrkInfo = Array.isArray(wrkObjList) ? wrkObjList[idxWrk] : wrkObjList;
           logger.info( wrkInfo );
           var wrkStatus = 1;
           var wrkMsg;
+          var mailto;
           try{
-            let memo = wrkInfo.memo.replace(/\'/gi, "\"");
+            let memo = wrkInfo.memo;
+            if( memo.trim().substring(0, 1) == "#" ){
+              memo = steem.memo.decode( botInfo.memo_key , memo);
+              memo = memo.substring(1);
+              logger.info("[decode memo] : "+memo);
+            }
+            memo = memo.replace(/\'/gi, "\"");
+            logger.info(memo);
             // let arrMemo;
             // if( memo.indexOf("=") > -1 ){
             //   arrMemo = memo.split("=");
@@ -801,6 +814,7 @@ function account_create_bot(){
 
             if( memo_metadata.email
               && memo_metadata.account ){
+                mailto = memo_metadata.email;
                 logger.info( memo_metadata );
             }else{
               var memoStr;
@@ -810,14 +824,20 @@ function account_create_bot(){
               wrkMsg = "형식 맞지 않음(memo syntax error). [" + memoStr +"]";
               throw new Error(wrkMsg);
             }
-            if( parseFloat(wrkInfo.amount) < parseFloat( fee.split(" ")[0] ) ){
-              wrkMsg = "금액이 부족함(). amount : " + wrkInfo.amount +", fee : " + fee;
+
+            if( !email.validate(mailto) ){
+              wrkMsg = "메일 주소가 유효하지 않습니다. " + mailto;
               throw new Error( wrkMsg );
             }
 
+            if( parseFloat(wrkInfo.amount) < parseFloat( fee.split(" ")[0] ) ){
+              wrkMsg = "금액이 부족함(Not Enough STEEM Amount). receipt amount : " + wrkInfo.amount +", needs fee : " + fee;
+              throw new Error( wrkMsg );
+            }
 
             // 생성 하고 이메일 발송하기!
             var creator = botInfo.id;
+            const creatorWif = botInfo.active_key;
             const newAccountName = memo_metadata.account;
 
             var existsAccount = await(steem.api.getAccounts([newAccountName], defer()));
@@ -847,7 +867,7 @@ function account_create_bot(){
         			key_auths: [[arrPublicKey["POSTING"], 1]]
         		};
             var jsonMetadata = '';
-            const creatorWif = "123123123";
+
 
             logger.info("이제 만들어줘볼까?? newAccountName : " + newAccountName + ", owner key : ["+arrPrivateKey["OWNER"]+"] ");
 
@@ -858,10 +878,31 @@ function account_create_bot(){
 
             wrkStatus = 0;
             wrkMsg = "생성 완료. owner key : ["+arrPrivateKey["OWNER"]+"]";
+
+            var title = "계정 생성 성공(Account creation successful)!";
+            var body = "<p style='font-size:1em;'> 아래 오너 키를 잃어버리시면 계정을 찾으실 수 없습니다. 지금 바로 스팀잇에 접속하셔서 오너키를 바로 변경해주시기 바랍니다. <br />"
+            body += " (If you lose this owner key, you will not be able to find your account.) <br /><br />";
+            body += "별도 사항은 <a href='https://steemit.com/@nhj12311'>@nhj12311</a> 에 문의 하실 수 있습니다. 감사합니다. <br />";
+            body += "(If you have any problems, please contact us by email or blog.)";
+            body += "<br /><br />";
+            body += wrkMsg + " </p> ";
+            email.send( mailto, title, body, function(err, res ){
+              logger.info(err, res );
+            });
           }catch(err){
             wrkMsg = err.message;
             logger.error( err, "create process error!" );
             wrkStatus = 9;
+            if( email.validate(mailto) ){
+              var title = "계정 생성 실패(Account creation failed)!";
+              var body = "<p style='font-size:1em;'> 아래 사유로 계정 생성에 실패하였습니다(Account creation failed for this reason). <br />"
+              body += "<a href='https://steemit.com/@nhj12311'>@nhj12311</a> 에 문의 하실 수 있습니다. ";
+              body += "(If you have any problems, please contact us by email or blog.) <br /><br />";
+              body += wrkMsg + "</p> ";
+              email.send( mailto, title, body, function(err, res ){
+                logger.info(err, res );
+              });
+            }
 
           }finally{
             var upQry = " update transfer set wrk_status = ? , wrk_msg = ? where trx_id = ? ";
@@ -877,7 +918,7 @@ function account_create_bot(){
 
       logger.error(err, "account_create_bot Error!");
     }finally{
-      setTimeout(function(){account_create_bot()}, 2000 );
+      setTimeout(function(){account_create_bot()}, 30000 );
     }
   });
 }
@@ -900,8 +941,8 @@ function prototype_bot(){
 function startBot(){
   blockBot();
   wrkBot();
+  walletBot();
+  account_create_bot();
 }
 
-//startBot();
-//walletBot();
-account_create_bot();
+startBot();
