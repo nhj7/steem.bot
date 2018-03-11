@@ -54,28 +54,37 @@ var server = http.createServer(function(req, res) {
   // process HTTP request. Since we're writing just WebSockets
   // server we don't have to implement anything.
 });
-server.listen(80, function() { });
-
+server.listen(8081, function() { });
 var https = require('https');
-var fs = require('fs');
-var options = {
-     key: fs.readFileSync('/etc/letsencrypt/live/steemalls.com/privkey.pem'),
-     cert: fs.readFileSync('/etc/letsencrypt/live/steemalls.com/fullchain.pem'),
-     //ca: fs.readFileSync('/path/to/chain.pem')
+var ssl_server;
+var ssl_options;
+var wsOption;
+if( process.env.NODE_ENV == 'production' ){
+  var fs = require('fs');
+  ssl_options = {
+    key: fs.readFileSync('/etc/letsencrypt/live/steemalls.com/privkey.pem'),
+    cert: fs.readFileSync('/etc/letsencrypt/live/steemalls.com/fullchain.pem'),
+    //ca: fs.readFileSync('/path/to/chain.pem')
+  }
+  ssl_server = https.createServer(options, function(req, res) {
+    res.writeHead(200);
+    res.end('kglAG-qcYYpheeaaR58ZPtD3QI_CAVjcqJm4iu9bIJ8.epV8hFNdTSGRbyH14ZxPWMD228467A5wlQmcl0pF9zk\n');
+    // process HTTP request. Since we're writing just WebSockets
+    // server we don't have to implement anything.
+  });
+  ssl_server.listen(443, function() { });
+  wsOption = {
+    httpServer: server
+    , httpsServer : ssl_server
+  };
+}else{
+  wsOption = {
+    httpServer: server
+  };
 }
-var ssl_server = https.createServer(options, function(req, res) {
-  res.writeHead(200);
-  res.end('kglAG-qcYYpheeaaR58ZPtD3QI_CAVjcqJm4iu9bIJ8.epV8hFNdTSGRbyH14ZxPWMD228467A5wlQmcl0pF9zk\n');
-  // process HTTP request. Since we're writing just WebSockets
-  // server we don't have to implement anything.
-});
-ssl_server.listen(443, function() { });
 
 // create the server
-wsServer = new WebSocketServer({
-  httpServer: server
-  , httpsServer : ssl_server
-});
+wsServer = new WebSocketServer(wsOption);
 
 // WebSocket server
 wsServer.on('request', function(request) {
