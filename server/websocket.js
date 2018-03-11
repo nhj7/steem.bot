@@ -75,7 +75,7 @@ if( process.env.NODE_ENV == 'production' ){
   ssl_server.listen(443, function() { });
   wsOption = {
     //httpServer: server
-    httpsServer : ssl_server
+    httpServer : ssl_server
   };
 }else{
   wsOption = {
