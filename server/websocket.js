@@ -66,7 +66,7 @@ if( process.env.NODE_ENV == 'production' ){
     cert: fs.readFileSync('/etc/letsencrypt/live/steemalls.com/fullchain.pem'),
     //ca: fs.readFileSync('/path/to/chain.pem')
   }
-  ssl_server = https.createServer(options, function(req, res) {
+  ssl_server = https.createServer(ssl_options, function(req, res) {
     res.writeHead(200);
     res.end('kglAG-qcYYpheeaaR58ZPtD3QI_CAVjcqJm4iu9bIJ8.epV8hFNdTSGRbyH14ZxPWMD228467A5wlQmcl0pF9zk\n');
     // process HTTP request. Since we're writing just WebSockets
