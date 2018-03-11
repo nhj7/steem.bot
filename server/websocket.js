@@ -63,7 +63,12 @@ var options = {
      cert: fs.readFileSync('/etc/letsencrypt/live/steemalls.com/fullchain.pem'),
      //ca: fs.readFileSync('/path/to/chain.pem')
 }
-var ssl_server = https.createServer(options, handlerFunction);
+var ssl_server = https.createServer(options, function(req, res) {
+  res.writeHead(200);
+  res.end('kglAG-qcYYpheeaaR58ZPtD3QI_CAVjcqJm4iu9bIJ8.epV8hFNdTSGRbyH14ZxPWMD228467A5wlQmcl0pF9zk\n');
+  // process HTTP request. Since we're writing just WebSockets
+  // server we don't have to implement anything.
+});
 ssl_server.listen(443, function() { });
 
 // create the server
