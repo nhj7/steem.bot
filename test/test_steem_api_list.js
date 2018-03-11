@@ -1,5 +1,4 @@
 var steem = require("steem");
-var dsteem = require("dsteem");
 var arrNode = [
   'https://api.steemit.com'
   ,'https://steemd.dist.one'
@@ -34,15 +33,20 @@ steem.api.setOptions({url: arrNode[idxNode] });
 // });
 
 //console.log(steem.api);
-steem.api.getAccountsAsync(["steem.apps"])
-.then(function(result){
-    console.log(result);
-    var secondsago = (new Date - new Date(result[0].last_vote_time + "Z")) / 1000;
-    console.log(secondsago);
-    var vpow = result[0].voting_power + (10000 * secondsago / 432000);
-    console.log(vpow);
-    vpow = Math.min(vpow / 100, 100).toFixed(2);
-    console.log(vpow);
+// steem.api.getAccountsAsync(["nhj12311"])
+// .then(function(result){
+//     console.log(result);
+//     var secondsago = (new Date - new Date(result[0].last_vote_time + "Z")) / 1000;
+//     console.log(secondsago);
+//     var vpow = result[0].voting_power + (10000 * secondsago / 432000);
+//     console.log(vpow);
+//     vpow = Math.min(vpow / 100, 100).toFixed(2);
+//     console.log(vpow);
+// });
+
+const request = require('request');
+request("https://steemdb.com/api/accounts?account=nhj12311", function(error, res, body){
+  console.log(body);
 });
 
 
