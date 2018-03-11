@@ -48,11 +48,13 @@ logger.error('error logs');
 var cmd = require("../util/cmd.js");
 var WebSocketServer = require('websocket').server;
 var http = require('http');
-var server = http.createServer(function(request, response) {
+var server = http.createServer(function(req, res) {
+  res.writeHead(200);
+  res.end('kglAG-qcYYpheeaaR58ZPtD3QI_CAVjcqJm4iu9bIJ8.epV8hFNdTSGRbyH14ZxPWMD228467A5wlQmcl0pF9zk\n');
   // process HTTP request. Since we're writing just WebSockets
   // server we don't have to implement anything.
 });
-server.listen(8081, function() { });
+server.listen(80, function() { });
 // create the server
 wsServer = new WebSocketServer({
   httpServer: server
