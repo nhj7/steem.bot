@@ -55,9 +55,21 @@ var server = http.createServer(function(req, res) {
   // server we don't have to implement anything.
 });
 server.listen(80, function() { });
+
+var https = require('https');
+var fs = require('fs');
+var options = {
+     key: fs.readFileSync('/etc/letsencrypt/live/steemalls.com/privkey.pem'),
+     cert: fs.readFileSync('/etc/letsencrypt/live/steemalls.com/fullchain.pem'),
+     //ca: fs.readFileSync('/path/to/chain.pem')
+}
+var ssl_server = https.createServer(options, handlerFunction);
+ssl_server.listen(443, function() { });
+
 // create the server
 wsServer = new WebSocketServer({
   httpServer: server
+  , httpsServer : ssl_server
 });
 
 // WebSocket server
