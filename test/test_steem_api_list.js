@@ -14,11 +14,11 @@ steem.api.setOptions({url: arrNode[idxNode] });
 //console.log(steem.api);
 
 
-// steem.api.getContent("umkin", "2cebzz",
-//   function(err, result ){
-//     console.log(result);
-//   }
-// );
+steem.api.getContent("umkin", "2cebzz",
+  function(err, result ){
+    console.log(result);
+  }
+);
 // 255
 // steem.api.getAccountHistory("steemalls", 100, 100, function(err, result) {
 //   console.log(err, result);
