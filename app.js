@@ -349,7 +349,7 @@ function srchNewPostAndRegCmnt(source, target){
     originalPost = source;
   }
   var comment = "["+ source.author + "](/@"+source.author+")님이 ";
-  comment += target.acct_nm + "님을 멘션하셨습니다. 아래에서 확인해볼까요? ^^ <br />";
+  comment += target.acct_nm + "님을 멘션하셨습니당. 아래 링크를 누르시면 연결되용~ ^^ <br />";
   var pull_link = "/"+originalPost.category+"/@"+originalPost.author+"/"+originalPost.permlink+"#@" + source.author+"/"+source.permlink ;
   comment += ("["+ originalPost.title + "](" + pull_link +")");
   logger.info(comment);
@@ -465,7 +465,7 @@ try {
                       const query = operation[1].body.replace(pc + "검색", "").replace(epc + "search", "").trim();
                       const items = inqryGoogle(query);
                       dvcd = "3";
-                      var comment = "안녕하세요. @steem.apps입니다. 요청하신 구글 내 스팀잇 `["+query+"]` 검색 결과입니다. <br /> "+nl+nl;
+                      var comment = "안녕하세여. @steem.apps입니당. 요청하신 구글 내 스팀잇 `["+query+"]` 검색 결과에요~♥ <br /> "+nl+nl;
 
                       for(var i = 0; i < items.length ;i++){
                         comment += "["+(i+1) + ". " + items[i].author + "님의 "+items[i].title+"](/@"+items[i].author+"/"+items[i].permlink+") " + " |"+nl;
@@ -485,14 +485,14 @@ try {
                           console.log(result);
                           var idxAuthor = result.indexOf( postInfo.author );
                           result.splice( idxAuthor , 1 );
-                          var cmntReLst = "이 글을 리스팀 해주신 소중한 분들입니다. "+nl;
+                          var cmntReLst = "이 글을 리스팀 해주신 소중한 분들입니당~ "+nl;
                           cmntReLst += "리스팀 목록 | "+nl;
                           cmntReLst += "-| "+nl;
                           for(var idx = 0; idx < result.length;idx++){
                             cmntReLst += "["+result[idx]+"](/@"+result[idx]+")| " + nl;
                           }
                           if( result.length == 0 ){
-                            cmntReLst = "아직 리스팀 해주신 분들이 없네요. ㅠㅠ 너무 실망하지 말고 힘내세요.";
+                            cmntReLst = "아직 리스팀 해주신 분들이 없네요. ㅠㅠ 너무 실망하지 말고 힘내세영~";
                           }
                           console.log(cmntReLst);
                           insertWrkList(operation[1].author, operation[1].permlink, cmntReLst);
@@ -506,7 +506,7 @@ try {
                           continue;
                         }
                         dvcd = "1"; // 리스팀 안내
-                        comment = "리스팀 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니다." : "해제되었습니다." );
+                        comment = "리스팀 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니당." : "해제되었습니당." );
                         // 리스팀 on, off 등록 end
                     }// if( operation[1].body.contains( [ pc + "리스팀", epc + "resteem"] ) ){
                     else if( operation[1].body.contains( [ pc + "멘션", epc + "mention"] ) ){
@@ -517,7 +517,7 @@ try {
                         continue;
                       }
                       dvcd = "2";
-                      var comment = "멘션 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니다." : "해제되었습니다." );
+                      var comment = "멘션 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니당." : "해제되었습니당." );
                     }
                     if( dvcd != "" ){
                         mergeSvcAcctMng(dvcd, operation[1].author, operation[1].permlink, useYn);
