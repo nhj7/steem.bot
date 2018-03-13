@@ -8,9 +8,19 @@ const qs = require('querystring');
 exports.get = function ( url , callback ) {
   var param = {url:url, encoding : null };
   request(param, function(error, res, body){
-    let enc = charset(res.headers, body); // 해당 사이트의 charset값을 획득
-    if( enc == null ){
-      enc = "utf8";
+    console.error(error);
+    if( error ){
+      callback(error, "" );
+      return;
+    }
+    let enc;
+    try{
+      enc = charset(res.headers, body); // 해당 사이트의 charset값을 획득
+      if( enc == null ){
+        enc = "utf8";
+      }
+    }catch(err){
+      console.error(err);
     }
     console.log("enc : " + enc );
     body = iconv.decode(body, enc); // 획득한 charset값으로 body를 디코딩
