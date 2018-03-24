@@ -6,7 +6,11 @@ exports.wsExecute = function ( json , socket ) {
   if(  "proxy" == json.cmd ){
     proxy.get(json.url, function(err, result ){
         //console.log(result.body);
-        json.body = result.body;
+        if( err ){
+          json.err = err.message;
+        }else{
+          json.body = result.body;
+        }
         socket.emit('io.res', json);
     });
   }
