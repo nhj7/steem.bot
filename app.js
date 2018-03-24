@@ -742,8 +742,6 @@ function walletBot(){
 
 
 // account_create_bot start
-//
-//
 function getCreateAccountFee(){
   var config = await(steem.api.getConfig( defer() ));
   //console.log( config );
