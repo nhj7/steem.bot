@@ -766,13 +766,11 @@ function walletBot(){
 
 
 // account_create_bot start
-//
-//
 function getCreateAccountFee(){
   var config = await(steem.api.getConfig( defer() ));
   //console.log( config );
   var chainProps = await(steem.api.getChainProperties( defer() ));
-  var ratio = config['STEEMIT_CREATE_ACCOUNT_WITH_STEEM_MODIFIER'];
+  var ratio = config['STEEM_CREATE_ACCOUNT_WITH_STEEM_MODIFIER'];
   //console.log(chainProps.account_creation_fee + ", " + ratio );
   var fee = ( parseFloat(chainProps.account_creation_fee.split(" ")[0]) * parseFloat(ratio) ) + "";
   if( fee.indexOf(".") == -1 ){
