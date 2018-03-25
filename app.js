@@ -321,6 +321,15 @@ function selectSvcAccMng(dvcd, author){
   return selRslt;
 }
 
+function saveMention(src_author , trg_author, title, full_link ){
+  var selQry = " select * from mention where 1=1 and src_author = ? and trg_author = ? and full_link = ? ";
+  var selRslt = query( selQry , [src_author , trg_author, full_link] );
+  if( selRslt.length == 0 ) return; // exists return!
+  var inQry = " insert into mention(src_author , trg_author, title, full_link) values(?, ?, ?, ?) ";
+  var inRslt = query(inQry, [src_author , trg_author, title, full_link] );
+  return inRslt;
+}
+
 function srchNewPostAndRegCmnt(source, target){
   if( source.author == target.acct_nm || source.parent_author == target.acct_nm ){
     return;
@@ -350,23 +359,37 @@ function srchNewPostAndRegCmnt(source, target){
   }
   var comment = "["+ source.author + "](/@"+source.author+")님이 ";
   comment += target.acct_nm + "님을 멘션하셨습니당. 아래 링크를 누르시면 연결되용~ ^^ <br />";
-  var pull_link = "/"+originalPost.category+"/@"+originalPost.author+"/"+originalPost.permlink+"#@" + source.author+"/"+source.permlink ;
+  var pull_link = (originalPost.category?"/"+originalPost.category:"")+"/@"+originalPost.author+"/"+originalPost.permlink;
+  if( originalPost.permlink !=  source.permlink ){
+    pull_link += "#@" + source.author+"/"+source.permlink ;
+  }
   comment += ("["+ originalPost.title + "](" + pull_link +")");
   logger.info(comment);
-  var lastCmnt = await(steem.api.getDiscussionsByAuthorBeforeDate(target.acct_nm, null, '2100-01-01T00:00:00', 1, defer()));
-  if( lastCmnt.length == 0 ){
-    lastCmnt = await(steem.api.getDiscussionsByComments({ start_author : target.acct_nm, limit: 1}, defer()));
-  }
-  //logger.error(lastCmnt);
-  if( lastCmnt.length == 0 ) return;
-  logger.info("lastCmnt : "+lastCmnt.title);
   // var reples = await(steem.api.getContentReplies(lastCmnt[0].author, lastCmnt[0].permlink, defer()));
   // for(var rpIdx = 0; rpIdx < reples.length;rpIdx++){
   //     if( reples[rpIdx].body.indexOf(pull_link) > -1 ){
   //       return;
   //     }
   // }
-  insertWrkList(lastCmnt[0].author, lastCmnt[0].permlink, comment, source.author, source.permlink);
+  if( target.option ){
+    saveMention(
+      source.author // src_author
+      , target.acct_nm  // trg_author
+      , originalPost.title  // title
+      , pull_link // pull link
+    );
+  }else{
+    var lastCmnt = await(steem.api.getDiscussionsByAuthorBeforeDate(target.acct_nm, null, '2100-01-01T00:00:00', 1, defer()));
+    if( lastCmnt.length == 0 ){
+      lastCmnt = await(steem.api.getDiscussionsByComments({ start_author : target.acct_nm, limit: 1}, defer()));
+    }
+    //logger.error(lastCmnt);
+    if( lastCmnt.length == 0 ) return;
+    logger.info("lastCmnt : "+lastCmnt.title);
+    insertWrkList(lastCmnt[0].author, lastCmnt[0].permlink, comment, source.author, source.permlink);
+  }
+
+
 }
 
 var sleepTm = 1000;
@@ -510,12 +533,13 @@ try {
                         // 리스팀 on, off 등록 end
                     }// if( operation[1].body.contains( [ pc + "리스팀", epc + "resteem"] ) ){
                     else if( operation[1].body.contains( [ pc + "멘션", epc + "mention"] ) ){
-                      var useYn = getUseYn(operation[1].body, "멘션", "mention");  // body, ko, en
+                      var useYn = getUseYn(operation[1].body, "멘션", "mention" );  // body, ko, en
                       if(useYn==""){
                         // 없으면 넘김.
                         logger.info("comment continue");
                         continue;
                       }
+                      parseCommand( operation[1].body , "멘션", "mention");
                       dvcd = "2";
                       var comment = "멘션 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니당." : "해제되었습니당." );
                     }
@@ -870,12 +894,13 @@ function account_create_bot(){
 
 
             logger.info("이제 만들어줘볼까?? newAccountName : " + newAccountName + ", owner key : ["+arrPrivateKey["OWNER"]+"] ");
-
-            var result = await(steem.broadcast.accountCreate(creatorWif, fee, creator,
-      						newAccountName, owner, active, posting, arrPublicKey["MEMO"],
-      						jsonMetadata, defer()));
-            logger.error(result);
-
+            if( process.env.NODE_ENV == 'development' ){
+            }else{
+              var result = await(steem.broadcast.accountCreate(creatorWif, fee, creator,
+                    newAccountName, owner, active, posting, arrPublicKey["MEMO"],
+                    jsonMetadata, defer()));
+              logger.error(result);
+            }
             wrkStatus = 0;
             wrkMsg = "생성 완료. owner key : ["+arrPrivateKey["OWNER"]+"]";
 
