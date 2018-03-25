@@ -543,9 +543,8 @@ try {
                       dvcd = "2";
                       var comment = "멘션 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니당." : "해제되었습니당." );
                     }
-                    if( dvcd != "" ){
+                    if( dvcd != "" )
                         mergeSvcAcctMng(dvcd, operation[1].author, operation[1].permlink, useYn);
-                    }
                     if( comment != "" ){
                         insertWrkList( operation[1].author, operation[1].permlink, comment);
                     }
