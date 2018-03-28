@@ -13,10 +13,38 @@ var idxNode = 0;
 steem.api.setOptions({url: arrNode[idxNode] });
 //console.log(steem.api);
 
+var marked = require("../util/marked.util.js");
 
-steem.api.getContent("sjchoi", "20180325t135014860z",
+function getPreView(body, author, lmtLen){
+  var idxAuthor = body.indexOf(author);
+  var cmnt = body.substring(idxAuthor, idxAuthor + author.length);
+  for(var i = 1; i <= lmtLen ;i++){
+    if( idxAuthor - i > 0 )
+      cmnt = body[idxAuthor - i] + cmnt;
+    if( idxAuthor + author.length + i < body.length )
+      cmnt = cmnt + body[idxAuthor + author.length+ i];
+    if( cmnt.length >= lmtLen){
+      if( idxAuthor - i > 0 ){
+        cmnt = "..."+cmnt;
+      }
+      if( idxAuthor + author.length+ i < body.length ){
+        cmnt = cmnt + "...";
+      }
+      break;
+    }
+  }
+  return cmnt;
+}
+
+steem.api.getContent("lalaflor", "75-120180328t062730467z",
   function(err, result ){
-    //console.log(result);
+    console.log(result);
+
+    text = marked.toText(result.body);
+    console.log(text);
+    text = getPreView(text, 'ryh0505', 128);
+    console.log("");
+    console.log(text);
   }
 );
 
