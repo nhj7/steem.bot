@@ -401,7 +401,7 @@ function srchNewPostAndRegCmnt(source, target){
     return;
   }
 
-  var post = steem.api.getContent(source.author, source.permlink, defer());
+  var post = await(steem.api.getContent(source.author, source.permlink, defer()));
   //logger.info(source);
   //logger.info(target);
   var originalPost;
