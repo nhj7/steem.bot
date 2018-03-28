@@ -408,7 +408,7 @@ function srchNewPostAndRegCmnt(source, target){
   }else{
     originalPost = source;
   }
-  var comment = "![](https://steemitimages.com/64x64/https://steemitimages.com/u/"+source.author+"/avatar) ["+ source.author + "](/@"+source.author+")님이 ";
+  var comment = "![](https://steemitimages.com/32x32/https://steemitimages.com/u/"+source.author+"/avatar) ["+ source.author + "](/@"+source.author+")님이 ";
   comment += target.acct_nm + "님을 멘션하셨습니당. 아래 링크를 누르시면 연결되용~ ^^ <br />";
   var pull_link = (originalPost.category ? "/"+originalPost.category:"" ) +"/@"+originalPost.author+"/"+originalPost.permlink;
   if( originalPost.permlink !=  source.permlink ){
