@@ -400,6 +400,8 @@ function srchNewPostAndRegCmnt(source, target){
     logger.error("이미 달려서 댓글 달지마삼...");
     return;
   }
+
+  source = steem.api.getContent(source.author, source.permlink, defer());
   //logger.info(source);
   //logger.info(target);
   var originalPost;
@@ -410,12 +412,13 @@ function srchNewPostAndRegCmnt(source, target){
   }
   var comment = "![](https://steemitimages.com/32x32/https://steemitimages.com/u/"+source.author+"/avatar) ["+ source.author + "](/@"+source.author+")님이 ";
   comment += target.acct_nm + "님을 멘션하셨습니당. 아래 링크를 누르시면 연결되용~ ^^ <br />";
-  var pull_link = (originalPost.category ? "/"+originalPost.category:"" ) +"/@"+originalPost.author+"/"+originalPost.permlink;
-  if( originalPost.permlink !=  source.permlink ){
-    pull_link += "#@" + source.author+"/"+source.permlink ;
-  }
+
+  // var pull_link = (originalPost.category ? "/"+originalPost.category:"" ) +"/@"+originalPost.author+"/"+originalPost.permlink;
+  // if( originalPost.permlink !=  source.permlink ){
+  //   pull_link += "#@" + source.author+"/"+source.permlink ;
+  // }
   logger.error(source);
-  //var pull_link = source.url;
+  var pull_link = source.url;
   comment += ("["+originalPost.author+"](/@"+originalPost.author+")님의 ["+ originalPost.title + "](" + pull_link +") <br /> ");
   var bodyText = marked.toText( source.body ).replace(/@/gi, "");
   var lmtLen = 128;
@@ -450,7 +453,6 @@ function srchNewPostAndRegCmnt(source, target){
     insertWrkList(lastCmnt[0].author, lastCmnt[0].permlink, comment, source.author, source.permlink);
   }
 }
-
 
 function getLastComment(author){
   var lastCmnt = await(steem.api.getDiscussionsByAuthorBeforeDate(author, null, '2100-01-01T00:00:00', 1, defer()));

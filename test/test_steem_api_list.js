@@ -35,8 +35,9 @@ function getPreView(body, author, lmtLen){
   }
   return cmnt;
 }
+//   url: '/kr-gazua/@lalaflor/75-120180328t062730467z#@soohyeongk/re-lalaflor-75-120180328t062730467z-20180328t062958684z',
 
-steem.api.getContent("lalaflor", "75-120180328t062730467z",
+steem.api.getContent("soohyeongk", "re-lalaflor-75-120180328t062730467z-20180328t062958684z",
   function(err, result ){
     console.log(result);
 
