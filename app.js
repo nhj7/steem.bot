@@ -401,7 +401,7 @@ function srchNewPostAndRegCmnt(source, target){
     return;
   }
 
-  source = steem.api.getContent(source.author, source.permlink, defer());
+  var post = steem.api.getContent(source.author, source.permlink, defer());
   //logger.info(source);
   //logger.info(target);
   var originalPost;
@@ -418,9 +418,9 @@ function srchNewPostAndRegCmnt(source, target){
   //   pull_link += "#@" + source.author+"/"+source.permlink ;
   // }
   logger.error(source);
-  var pull_link = source.url;
+  var pull_link = post.url;
   comment += ("["+originalPost.author+"](/@"+originalPost.author+")님의 ["+ originalPost.title + "](" + pull_link +") <br /> ");
-  var bodyText = marked.toText( source.body ).replace(/@/gi, "");
+  var bodyText = marked.toText( post.body ).replace(/@/gi, "");
   var lmtLen = 128;
   if( bodyText.length > lmtLen ){
     bodyText = getPreView(bodyText, target.acct_nm, lmtLen);
