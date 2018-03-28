@@ -14,11 +14,17 @@ steem.api.setOptions({url: arrNode[idxNode] });
 //console.log(steem.api);
 
 
-steem.api.getContent("umkin", "2cebzz",
+steem.api.getContent("sjchoi", "20180325t135014860z",
   function(err, result ){
-    console.log(result);
+    //console.log(result);
   }
 );
+
+var rsltValidAcctNm = steem.utils.validateAccountName('test1234');
+if( rsltValidAcctNm ){
+    console.log(rsltValidAcctNm);
+}
+
 // 255
 // steem.api.getAccountHistory("steemalls", 100, 100, function(err, result) {
 //   console.log(err, result);
@@ -44,10 +50,10 @@ steem.api.getContent("umkin", "2cebzz",
 //     console.log(vpow);
 // });
 
-const request = require('request');
-request("https://steemdb.com/api/accounts?account=nhj12311", function(error, res, body){
-  console.log(body);
-});
+// const request = require('request');
+// request("https://steemdb.com/api/accounts?account=nhj12311", function(error, res, body){
+//   console.log(body);
+// });
 
 
 

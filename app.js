@@ -17,6 +17,11 @@ function toSqlArr(arr){
 }
 // custom function create end.
 
+var sleepTm = 1000;
+var pc = "@"; // pre command
+var epc = "!"; // pre command
+var nl = "\r\n";  // new line
+
 // module init
 const winston = require('winston');
 require('winston-daily-rotate-file');
@@ -176,10 +181,16 @@ function awaitRequest(param, callback){
 function query(sql, params){
   //console.log("query.sql : "+sql );
   var conn = await(pool.getConnection( defer() ));
-  var rows = await(conn.query(sql, params, defer() ));
-  //console.log( rows );
-  conn.release(); // 반환.
-  return rows;
+  var rows;
+  try{
+      rows = await(conn.query(sql, params, defer() ));
+  }catch(err){
+    logger.error( "query error!", err );
+    throw err;
+  }finally{
+      conn.release(); // 반환.
+      return rows;
+  }
 }
 
 function inqryGoogle( query ){
@@ -284,7 +295,7 @@ function insertWrkList(author, permlink, comment, src_author, src_permlink){
   //logger.info(inRslt);
 }
 
-function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn){
+function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn, option){
   var selQry = "select * from svc_acct_mng where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
   //logger.info("selQry : " + selQry);
   var selRslt = (query(selQry ));
@@ -292,9 +303,9 @@ function mergeSvcAcctMng(dvcd, acct_nm, permlink, useYn){
   var regQry = "";
   // 있으면 업데이트
   if( selRslt.length > 0 ){
-    regQry = "update svc_acct_mng set use_yn = '"+ useYn +"' , permlink = '" + permlink + "' where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
+    regQry = "update svc_acct_mng set use_yn = '"+ useYn +"' , permlink = '" + permlink + "' , svc_option = '"+option+"' where dvcd = "+dvcd+" and acct_nm = '"+ acct_nm +"' ";
   }else{  // 없으면 등록!!!
-    regQry = "insert into svc_acct_mng ( dvcd, acct_nm, permlink, use_yn ) values ("+dvcd+", '"+ acct_nm +"', '" + permlink + "', '"+useYn+"' ) ";
+    regQry = "insert into svc_acct_mng ( dvcd, acct_nm, permlink, use_yn, svc_option ) values ("+dvcd+", '"+ acct_nm +"', '" + permlink + "', '"+useYn+"', '"+option+"' ) ";
   }
   //logger.info("regQry : " + regQry);
   var regRslt = (query(regQry ));
@@ -311,6 +322,23 @@ function getUseYn(body , ko, en){
   return useYn;
 }
 
+function parseCommand(patternOption, body, cmdKo, cmdEn){
+  var cmdPatternKo = pc+cmdKo + " " + patternOption;
+  var cmdPatternEn = epc+cmdEn + " " + patternOption;
+  var regExpKo = new RegExp(cmdPatternKo);
+  var regExpEn = new RegExp(cmdPatternEn);
+
+  var rsltMatch = body.match(regExpKo);
+  if( !rsltMatch || rsltMatch.length == 0 ){
+    rsltMatch = body.match(regExpEn);
+  }
+  if( rsltMatch && rsltMatch.length > 0 ){
+      return ( rsltMatch[0].match(patternOption)[0] );
+  }else{
+    return "";
+  }
+}
+
 function selectSvcAccMng(dvcd, author){
   if( author.indexOf("\"") == -1 ){
     author = "\""+ author + "\"";
@@ -321,13 +349,36 @@ function selectSvcAccMng(dvcd, author){
   return selRslt;
 }
 
-function saveMention(src_author , trg_author, title, full_link ){
+function saveMention(src_author , trg_author, title, full_link, post_author, pre_body ){
   var selQry = " select * from mention where 1=1 and src_author = ? and trg_author = ? and full_link = ? ";
   var selRslt = query( selQry , [src_author , trg_author, full_link] );
-  if( selRslt.length == 0 ) return; // exists return!
-  var inQry = " insert into mention(src_author , trg_author, title, full_link) values(?, ?, ?, ?) ";
-  var inRslt = query(inQry, [src_author , trg_author, title, full_link] );
+  if( selRslt.length > 0 ) return; // exists return!
+  var inQry = " insert into mention(src_author , trg_author, title, full_link, post_author, pre_body ) values(?, ?, ?, ?, ?, ? ) ";
+  var inRslt = query(inQry, [src_author , trg_author, title, full_link, post_author, pre_body] );
   return inRslt;
+}
+
+var marked = require('./util/marked.util.js');
+
+function getPreView(body, author, lmtLen){
+  var idxAuthor = body.indexOf(author);
+  var cmnt = body.substring(idxAuthor, idxAuthor + author.length);
+  for(var i = 1; i <= lmtLen ;i++){
+    if( idxAuthor - i > 0 )
+      cmnt = body[idxAuthor - i] + cmnt;
+    if( idxAuthor + author.length + i < body.length )
+      cmnt = cmnt + body[idxAuthor + author.length+ i];
+    if( cmnt.length >= lmtLen){
+      if( idxAuthor - i > 0 ){
+        cmnt = "..."+cmnt;
+      }
+      if( idxAuthor + author.length+ i < body.length ){
+        cmnt = cmnt + "...";
+      }
+      break;
+    }
+  }
+  return cmnt;
 }
 
 function srchNewPostAndRegCmnt(source, target){
@@ -357,45 +408,58 @@ function srchNewPostAndRegCmnt(source, target){
   }else{
     originalPost = source;
   }
-  var comment = "["+ source.author + "](/@"+source.author+")님이 ";
+  var comment = "![](https://steemitimages.com/64x64/https://steemitimages.com/u/"+source.author+"/avatar) ["+ source.author + "](/@"+source.author+")님이 ";
   comment += target.acct_nm + "님을 멘션하셨습니당. 아래 링크를 누르시면 연결되용~ ^^ <br />";
-  var pull_link = (originalPost.category?"/"+originalPost.category:"")+"/@"+originalPost.author+"/"+originalPost.permlink;
+  var pull_link = (originalPost.category ? "/"+originalPost.category:"" ) +"/@"+originalPost.author+"/"+originalPost.permlink;
   if( originalPost.permlink !=  source.permlink ){
     pull_link += "#@" + source.author+"/"+source.permlink ;
   }
-  comment += ("["+ originalPost.title + "](" + pull_link +")");
-  logger.info(comment);
+  logger.error(source);
+  //var pull_link = source.url;
+  comment += ("["+originalPost.author+"](/@"+originalPost.author+")님의 ["+ originalPost.title + "](" + pull_link +") <br /> ");
+  var bodyText = marked.toText( source.body ).replace(/@/gi, "");
+  var lmtLen = 128;
+  if( bodyText.length > lmtLen ){
+    bodyText = getPreView(bodyText, target.acct_nm, lmtLen);
+  }
+  comment += "\n\r <blockquote>" + bodyText + "</blockquote>";
+  //logger.info(comment);
   // var reples = await(steem.api.getContentReplies(lastCmnt[0].author, lastCmnt[0].permlink, defer()));
   // for(var rpIdx = 0; rpIdx < reples.length;rpIdx++){
   //     if( reples[rpIdx].body.indexOf(pull_link) > -1 ){
   //       return;
   //     }
   // }
-  if( target.option ){
+  //logger.error("target.svc_option : "+target.svc_option);
+  if( target.svc_option != ""){
+    logger.info("saveMention!!!!");
     saveMention(
       source.author // src_author
       , target.acct_nm  // trg_author
       , originalPost.title  // title
       , pull_link // pull link
+      , originalPost.author // post_author
+      , bodyText  // body
     );
   }else{
-    var lastCmnt = await(steem.api.getDiscussionsByAuthorBeforeDate(target.acct_nm, null, '2100-01-01T00:00:00', 1, defer()));
-    if( lastCmnt.length == 0 ){
-      lastCmnt = await(steem.api.getDiscussionsByComments({ start_author : target.acct_nm, limit: 1}, defer()));
-    }
+    logger.info(comment);
+    var lastCmnt = getLastComment(target.acct_nm);
     //logger.error(lastCmnt);
     if( lastCmnt.length == 0 ) return;
     logger.info("lastCmnt : "+lastCmnt.title);
     insertWrkList(lastCmnt[0].author, lastCmnt[0].permlink, comment, source.author, source.permlink);
   }
-
-
 }
 
-var sleepTm = 1000;
-var pc = "@"; // pre command
-var epc = "!"; // pre command
-var nl = "\r\n";  // new line
+
+function getLastComment(author){
+  var lastCmnt = await(steem.api.getDiscussionsByAuthorBeforeDate(author, null, '2100-01-01T00:00:00', 1, defer()));
+  if( lastCmnt.length == 0 ){
+    lastCmnt = await(steem.api.getDiscussionsByComments({ start_author : author, limit: 1}, defer()));
+  }
+  return lastCmnt;
+}
+
 
 function blockBot(){
 try {
@@ -429,7 +493,7 @@ try {
         }else{
             workBlockNumber++;
         }
-        //logger.info( 'lastBlockNumber : ' + lastBlockNumber + ", workBlockNumber : " + workBlockNumber);
+        logger.info( 'lastBlockNumber : ' + lastBlockNumber + ", workBlockNumber : " + workBlockNumber);
         try {
           var block = await( steem.api.getBlock(workBlockNumber, defer()) );
           if( block.transactions )
@@ -474,6 +538,7 @@ try {
                   var useYn = "";
                   var dvcd = "";
                   var comment = "";
+                  var cmdOption = "";
                     if( operation[1].body.contains( [ pc + "검색", epc + "search"] ) ){
                       if( operation[1].body.length > 64 ){
                         logger.info("검색어 길이가 너무 깁니다. " + operation[1].body);
@@ -539,12 +604,26 @@ try {
                         logger.info("comment continue");
                         continue;
                       }
-                      parseCommand( operation[1].body , "멘션", "mention");
+                      cmdOption = parseCommand( "[0-9]{1,2} [0-9]{1,2} [0-9]{1,2}", operation[1].body , "멘션 등록", "mention reg");
                       dvcd = "2";
                       var comment = "멘션 댓글 안내 서비스가 " +  ( useYn == "Y" ? "등록되었습니당." : "해제되었습니당." );
+                      if( cmdOption != ""){
+                        var arrCmd = cmdOption.split(" ");
+                        if( parseInt(arrCmd[0]) == 24 && parseInt(arrCmd[1]) <= 24 && parseInt(arrCmd[2]) <= 60 ){
+                          comment += "<br />이제 매일 " + arrCmd[1] + "시 " +arrCmd[2]+"분에 멘션 알림 댓글을 받으실 수 있습니당~";
+                        }
+                        else if( parseInt(arrCmd[0]) < 24 && parseInt(arrCmd[1]) <= 60 && parseInt(arrCmd[2]) <= 60 ){
+                          comment += "<br />이제 매 " + arrCmd[0] + "시간 " +arrCmd[1]+"분 마다 멘션 알림 댓글을 받으실 수 있습니당~";
+                        }
+                        else{
+                          cmdOption = "";
+                          comment += "<br />멘션 스케줄 등록 방법은 하루에 한번 오후 18시 30분에 받고 싶은 기준으로는 `24 18 30`과 같이 입력하면 됩니다.";
+                          comment += " 매 3시간 30분마다 받고 싶으신 경우는 `3 30 00`처럼 입력해주시면 됩니당~.";
+                        }
+                      }
                     }
                     if( dvcd != "" )
-                        mergeSvcAcctMng(dvcd, operation[1].author, operation[1].permlink, useYn);
+                        mergeSvcAcctMng(dvcd, operation[1].author, operation[1].permlink, useYn, cmdOption);
                     if( comment != "" ){
                         insertWrkList( operation[1].author, operation[1].permlink, comment);
                     }
@@ -605,7 +684,11 @@ function wrkBot(){
           var permlink = steem.formatter.commentPermlink(parentAuthor.replace(/./gi,"-"), parentPermlink);
           var title = "";
           var body = wrkList[i].comment;
-          var jsonMetadata = {};
+          var jsonMetadata = {
+            "app" : "steem.apps/0.1"
+            , "format" : "markdown"
+
+          };
 
           var commentRslt = await(steem.broadcast.comment(wif, parentAuthor, parentPermlink, author, permlink, title, body, jsonMetadata,defer() ));
           logger.error(commentRslt);
@@ -622,10 +705,9 @@ function wrkBot(){
           vpow = Math.min(vpow / 100, 100).toFixed(2);
           var weight = 100; // 100%
           weight = weight * 100;
-          if( vpow > 93 ){
+          if( vpow > 90 ){
             steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight, function(err, result) { logger.info(err, result); });
           }
-
         }
       }catch(err){
         logger.error("wrkBot error : ", err);
@@ -861,6 +943,12 @@ function account_create_bot(){
             const creatorWif = botInfo.active_key;
             const newAccountName = memo_metadata.account;
 
+            var rsltValidAcctNm = steem.utils.validateAccountName(newAccountName);
+            if( rsltValidAcctNm ){
+                wrkMsg = ("This account name is invalid." + rsltValidAcctNm );
+                throw new Error( wrkMsg );
+            }
+
             var existsAccount = await(steem.api.getAccounts([newAccountName], defer()));
             if( existsAccount.length > 0 ){
               wrkMsg = "[" + newAccountName + "] This account already exists. ";
@@ -968,3 +1056,73 @@ function startBot(){
 }
 
 startBot();
+
+var moment = require('moment');
+
+// mentionBot
+function mentionBot(){
+  fiber(function() {
+    try{
+      var mentionChkQry =
+      `SELECT
+      	ACCT_NM
+      	, SVC_OPTION
+      	, MP
+      	, CASE WHEN OP1 = 24 THEN 0 ELSE OP1 END AS OP1
+      	, OP2
+      	, OP3
+      	, date_format(now(),'%H:%i:%s')
+      FROM (
+      	SELECT
+      		ACCT_NM
+      		, SVC_OPTION
+      		, MP
+      		, SUBSTRING_INDEX(SUBSTRING_INDEX( SVC_OPTION , ' ', 1), ' ', -1) * A.MP AS OP1
+      		, SUBSTRING_INDEX(SUBSTRING_INDEX( SVC_OPTION , ' ', 2), ' ', -1)	AS OP2
+      		, SUBSTRING_INDEX(SUBSTRING_INDEX( SVC_OPTION , ' ', 3), ' ', -1)	AS OP3
+      	FROM SVC_ACCT_MNG
+      	INNER JOIN (
+      		SELECT 1 AS MP UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION
+      		SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION
+      		SELECT 10 UNION SELECT 11 UNION SELECT 12 UNION SELECT 13 UNION SELECT 14 UNION
+      		SELECT 15 UNION SELECT 16 UNION SELECT 17 UNION SELECT 18 UNION SELECT 19 UNION
+      		SELECT 20 UNION SELECT 21 UNION SELECT 22 UNION SELECT 23 UNION SELECT 24
+      	) A
+      	WHERE DVCD = 2
+      	AND SVC_OPTION <> ''
+      	AND SUBSTRING_INDEX(SUBSTRING_INDEX( SVC_OPTION , ' ', 1), ' ', -1) * A.MP <= 24
+      ) TMP
+      WHERE 1=1
+      AND ((MP = 1 AND OP1 = 24 AND OP2 = date_format(now(),'%H') AND OP3 = date_format(now(),'%i') )
+      		OR CASE WHEN OP1 = 24 THEN 0 ELSE OP1 END = date_format(now(),'%H') AND OP2 = date_format(now(),'%i')  )
+      -- AND OP2 = date_format(now(),'%i') `;
+      //console.log( mentionChkQry );
+      var acctList = query(mentionChkQry);
+      for( var idxAcct = 0; idxAcct < acctList.length ; idxAcct++  ){
+        logger.info("metionBot : ", acctList[idxAcct] );
+        var selQry = "select * from mention where 1=1 and status = 1 and trg_author = ? ";
+        var mentionList = query(selQry, [ acctList[idxAcct].ACCT_NM ] );
+        if( mentionList.length == 0 ){
+          continue;
+        }
+        var comment = "안녕하세요. 멘션모아 댓글 알림입니당. <br /> <hr />\n";
+
+        var upQry = "update mention set status = 0 where src_author = ? and trg_author = ? and full_link = ?";
+        for( var idxMen = 0; idxMen < mentionList.length ; idxMen++  ){
+          logger.info("metionBot : ", acctList[idxAcct].ACCT_NM + " mention "+idxMen,mentionList[idxMen] );
+          comment += "![](https://steemitimages.com/32x32/https://steemitimages.com/u/"+mentionList[idxMen].src_author+"/avatar) ["+mentionList[idxMen].src_author + "](/@"+mentionList[idxMen].src_author+") : [" + mentionList[idxMen].title + "]("+mentionList[idxMen].full_link+") - "+moment(mentionList[idxMen].reg_dttm).format("HH:mm")
+          comment += "\n <blockquote> " + mentionList[idxMen].pre_body + " </blockquote> <hr /> \n\n";
+          query(upQry, [mentionList[idxMen].src_author, mentionList[idxMen].trg_author, mentionList[idxMen].full_link] );
+        }
+        var lastCmnt = getLastComment(acctList[idxAcct].ACCT_NM);
+        insertWrkList(lastCmnt[0].author, lastCmnt[0].permlink, comment);
+      }
+    }catch(err){
+      logger.error("mentionBot Error!", err);
+    }finally{
+      //setTimeout(function(){prototype_bot()}, 1000 );
+    }
+  });
+}
+
+setInterval(function(){ mentionBot() }, 59000 );  // 59초마다 수행!
