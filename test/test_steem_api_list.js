@@ -40,7 +40,7 @@ steem.api.getContent("lalaflor", "75-120180328t062730467z",
   function(err, result ){
     console.log(result);
 
-    text = marked.toText(result.body);
+    text = marked.toText(result.body.replace(/@/gi, ""));
     console.log(text);
     text = getPreView(text, 'ryh0505', 128);
     console.log("");
