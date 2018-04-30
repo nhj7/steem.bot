@@ -37,35 +37,99 @@ function getPreView(body, author, lmtLen){
 }
 //   url: '/kr-gazua/@lalaflor/75-120180328t062730467z#@soohyeongk/re-lalaflor-75-120180328t062730467z-20180328t062958684z',
 
-steem.api.getContent("soohyeongk", "re-lalaflor-75-120180328t062730467z-20180328t062958684z",
-  function(err, result ){
-    console.log(result);
-
-    text = marked.toText(result.body.replace(/@/gi, ""));
-    console.log(text);
-    text = getPreView(text, 'ryh0505', 128);
-    console.log("");
-    console.log(text);
-  }
-);
-
-var rsltValidAcctNm = steem.utils.validateAccountName('test1234');
-if( rsltValidAcctNm ){
-    console.log(rsltValidAcctNm);
-}
+// steem.api.getContent("soohyeongk", "re-lalaflor-75-120180328t062730467z-20180328t062958684z",
+//   function(err, result ){
+//     console.log(result);
+//
+//     text = marked.toText(result.body.replace(/@/gi, ""));
+//     console.log(text);
+//     text = getPreView(text, 'ryh0505', 128);
+//     console.log("");
+//     console.log(text);
+//   }
+// );
+//
+// var rsltValidAcctNm = steem.utils.validateAccountName('test1234');
+// if( rsltValidAcctNm ){
+//     console.log(rsltValidAcctNm);
+// }
 
 // 255
-// steem.api.getAccountHistory("steemalls", 100, 100, function(err, result) {
-//   console.log(err, result);
-//   for(var i = 0; i < result.length;i++){
-//     //console.log("data : "+JSON.stringify(result[i][1]));
-//     //if( result[i][1].op[0] == 'transfer' ){
-//       console.log("num : "+result[i][0]);
-//       console.log("type : "+result[i][1].op[0]);
-//       console.log("info : "+JSON.stringify(result[i][1].op[1]));
-//     //}
-//   }
-// });
+
+function onlyUnique(value, index, self) {
+    return self.indexOf(value) === index;
+}
+
+async function tmp(){
+  try{
+    const lmtCnt = 10000;
+    let idxHist = -1;
+    let arrVoter = new Array();
+    let arrVoterObj = new Array();
+    let arrVotingObj = new Array();
+    var gprops = await steem.api.getDynamicGlobalPropertiesAsync();
+    var steemPower = gprops.total_vesting_fund_steem.replace(" STEEM", "") / gprops.total_vesting_shares.replace(" VESTS", "");
+    do{
+      console.error(idxHist, lmtCnt);
+      var result = await steem.api.getAccountHistoryAsync("nhj12311", idxHist, lmtCnt);
+      console.error(result.length, result[0][0] + '~' + result[result.length-1][0]);
+      for(var i = 0; i < result.length;i++){
+
+        if( result[i][1].op[0] == 'vote' ){
+          var t = result[i][1].timestamp.replace("T"," ").split(/[- :]/);
+          var d = new Date(Date.UTC(t[0], t[1]-1, t[2], t[3], t[4], t[5]));
+          var offset = d.getTimezoneOffset() / 60;
+          var hours = d.getHours();
+          d.setHours(hours - offset);
+          /*
+          console.log("date : "+(result[i][1].timestamp), d);
+          console.log("num : "+result[i][0]);
+          console.log("type : "+result[i][1].op[0]);
+          console.log("info : "+JSON.stringify(result[i][1].op[1]));
+          */
+          arrVoter.push(result[i][1].op[1].voter);
+          arrVoterObj.push(result[i][1].op[1]);
+        }
+      }
+      idxHist = result[0][0]-1;
+    }while( result.length == lmtCnt)
+
+    //console.error("arrVoter", arrVoter.length);
+    arrVoter = arrVoter.filter(onlyUnique);
+    //console.error("arrVoter after fileter.", arrVoter.length, arrVoter);
+    //console.error("arrVoterObj", arrVoterObj);
+
+    var arrRangeSp = [ 0, 1000, 5000, 10000 ];
+    var objRangeGrp = {};
+    for(let i = 0; i < arrRangeSp.length;i++){
+      objRangeGrp[arrRangeSp[i]] = new Array();
+    }
+    var accounts = await steem.api.getAccountsAsync(arrVoter);
+    for(let i = 0; i < accounts.length;i++){
+      var userTotalVest = parseInt(accounts[i].vesting_shares.replace(" VESTS", ""))
+      - parseInt(accounts[i].delegated_vesting_shares.replace(" VESTS", ""))
+      + parseInt(accounts[i].received_vesting_shares.replace(" VESTS", ""));
+      let acct_sp_tot = Math.floor(userTotalVest * steemPower);
+      accounts[i].acct_sp_tot = acct_sp_tot;
+      for(let spIdx = arrRangeSp.length; spIdx >= 0;spIdx--){
+        console.error(acct_sp_tot, arrRangeSp[spIdx]);
+        if( acct_sp_tot >= arrRangeSp[spIdx] ){
+          objRangeGrp[arrRangeSp[spIdx]].push(accounts[i].name);
+          break;
+        }
+      }
+    }
+    //console.error("accounts", accounts);
+    console.error("objRangeGrp", objRangeGrp);
+  }catch(err){
+    console.error("async function tmp() error!", err);
+  }finally{
+
+  }
+
+}
+
+tmp();
 
 //console.log(steem.api);
 // steem.api.getAccountsAsync(["nhj12311"])
