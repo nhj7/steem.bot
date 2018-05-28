@@ -1,5 +1,6 @@
 var jsonobj = { account : 'new.account' , email : 'nhj7@naver.com' };
 
+<<<<<<< Updated upstream
 // console.log(jsonobj);
 // console.log( JSON.parse(" {'account':'new.account', 'email' : 'nhj7@naver.com' } ".replace(/\'/gi, "\"") ) );
 // console.log( "@@".includes("@@") );
@@ -30,3 +31,15 @@ if( undefinede )
 console.log(undefinede);
 
 console.log("@nhj12311@".replace(/@/gi, ""));
+=======
+//console.log(jsonobj);
+//console.log( JSON.parse(" {'account':'new.account', 'email' : 'nhj7@naver.com' } ".replace(/\'/gi, "\"") ) );
+//console.log( "@@".includes("@@") );
+
+var regExpKo = new RegExp("@멘션 [ㄱ-ㅎ|ㅏ-ㅣ|가-힣]* [0-9]{1,2}-[0-9]{1,2}-[0-9]{1,2}");
+var regExpEn = new RegExp("!mention [a-z]* [0-9]{1,2}-[0-9]{1,2}-[0-9]{1,2}");
+
+console.log( "와 이런게 있었네요. @멘션 등록 3-07-30".match(regExpKo) );
+
+console.log( "oh so good. !mention reg 3-07-30".match(regExpEn) );
+>>>>>>> Stashed changes
