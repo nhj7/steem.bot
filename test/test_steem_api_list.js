@@ -13,28 +13,7 @@ var idxNode = 0;
 steem.api.setOptions({url: arrNode[idxNode] });
 //console.log(steem.api);
 
-var marked = require("../util/marked.util.js");
 
-function getPreView(body, author, lmtLen){
-  var idxAuthor = body.indexOf(author);
-  var cmnt = body.substring(idxAuthor, idxAuthor + author.length);
-  for(var i = 1; i <= lmtLen ;i++){
-    if( idxAuthor - i > 0 )
-      cmnt = body[idxAuthor - i] + cmnt;
-    if( idxAuthor + author.length + i < body.length )
-      cmnt = cmnt + body[idxAuthor + author.length+ i];
-    if( cmnt.length >= lmtLen){
-      if( idxAuthor - i > 0 ){
-        cmnt = "..."+cmnt;
-      }
-      if( idxAuthor + author.length+ i < body.length ){
-        cmnt = cmnt + "...";
-      }
-      break;
-    }
-  }
-  return cmnt;
-}
 //   url: '/kr-gazua/@lalaflor/75-120180328t062730467z#@soohyeongk/re-lalaflor-75-120180328t062730467z-20180328t062958684z',
 
 // steem.api.getContent("soohyeongk", "re-lalaflor-75-120180328t062730467z-20180328t062958684z",
@@ -83,15 +62,21 @@ async function tmp(){
           var hours = d.getHours();
           d.setHours(hours - offset);
 
+<<<<<<< HEAD
           /*
 
+=======
+>>>>>>> 8d022227bc632c6f5a2522c9303718e1d56c483f
           console.log("date : "+(result[i][1].timestamp), d);
           console.log("num : "+result[i][0]);
           console.log("type : "+result[i][1].op[0]);
           console.log("info : "+JSON.stringify(result[i][1].op[1]));
 
+<<<<<<< HEAD
           */
 
+=======
+>>>>>>> 8d022227bc632c6f5a2522c9303718e1d56c483f
           arrVoter.push(result[i][1].op[1].voter);
           arrAuthor.push(result[i][1].op[1].author);
 
@@ -113,7 +98,7 @@ async function tmp(){
         }
       }
       idxHist = result[0][0]-1;
-    }while( result.length == lmtCnt)
+    }while( result.length >= lmtCnt)
 
     console.error("totRcvVotingVal", totRcvVotingVal);
     console.error("totDoVotingVal", totDoVotingVal);
