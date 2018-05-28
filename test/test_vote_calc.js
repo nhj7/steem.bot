@@ -42,7 +42,7 @@ async function test(){
   vp = (seconds_since_last_vote * 10000 / 86400 / 5) + account[0].voting_power;
   console.log('vp is: ' + vp);
   console.log('Total steem power is: ' + steempower);
-  
+
 
 }
 
