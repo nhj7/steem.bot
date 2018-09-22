@@ -98,7 +98,11 @@ async function getContentsByTitle(author, title){
 
 //getContentsByTitle('tanama', '[daily] 2018년 9월 22일');
 
-getContentsByTitle('ayogom', '[ 하생시 ] 18.09.22 나의.');
+//getContentsByTitle('ayogom', '[ 하생시 ] 18.09.22 나의.');
+
+//getContentsByTitle('zinasura', '창세기전3 파트2 영혼의 검 14화');
+
+getContentsByTitle('yoon', '[부동산이야기] 대체 집값은 언제까지 오르는걸까?');
 
 //getContentsByTitle('jjy', 'steem essay @jjy의 샘이 깊은 물 - 맛나는 점심.');
 
