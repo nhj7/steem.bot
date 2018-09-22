@@ -22,10 +22,12 @@
     "cheerio": "^1.0.0-rc.2",
     "dotenv": "^5.0.1",
     "dsteem": "^0.8.7",
+    "fiber": "^1.0.4",
     "fibers": "^2.0.0",
     "iconv-lite": "^0.4.19",
     "markdown": "^0.5.0",
     "marked": "^0.3.19",
+    "mecab-ya": "^0.1.1",
     "moment": "^2.21.0",
     "mysql": "^2.15.0",
     "node-gyp": "^3.6.2",
@@ -41,5 +43,9 @@
     "websocket": "^1.0.25",
     "winston": "^2.4.0",
     "winston-daily-rotate-file": "^1.7.2"
+  },
+  "optionalDependencies": {
+    "fibers": "^2.0.0",
+    "synchronize": "^2.0.0"
   }
 }
