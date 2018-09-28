@@ -32,14 +32,14 @@ require('winston-daily-rotate-file');
 const tsFormat = () => (new Date()).toLocaleTimeString();
 
 console.log("tsFormat : " + tsFormat);
-
+const logPath = '/log/steem_nhj/';
 const logger = new (winston.Logger)({
    transports: [
      new (winston.transports.Console)({ timestamp: tsFormat }),
      new (winston.transports.DailyRotateFile)({
           // filename property 지정
           name : 'log'
-          , filename: '/log/console.log'
+          , filename: logPath + 'console.log'
           , datePattern: '.yyyy.MM.dd'
           , prepend: false
           , timestamp: tsFormat
@@ -52,7 +52,7 @@ const logger = new (winston.Logger)({
       }),
      new (winston.transports.DailyRotateFile)({
          name : 'error_log'
-         , filename: '/log/error.log'
+         , filename: logPath + 'error.log'
          , datePattern: '.yyyy.MM.dd'
          , prepend: false
          , timestamp: tsFormat
@@ -77,7 +77,7 @@ const defer = sync.defer;
 // synchronize init end!
 
 
-
+require('dotenv').config();
 // init mysql!
 var db_config = {
    // 운영 모드.
@@ -92,11 +92,11 @@ var db_config = {
     },
     // 개발 모드
     dev: {
-      host: '127.0.0.1',
-      port: '3306',
-      user: 'steem_nhj',
-      password: 'steem_nhj',
-      database: 'steem_nhj',
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE,
       connectionLimit:20,
       waitForConnections:false
     }
@@ -462,7 +462,7 @@ function getLastComment(author){
   return lastCmnt;
 }
 
-
+var mecab = require("./util/mecab_ko.js");
 function blockBot(){
 try {
     logger.info( "steem init!" );
@@ -517,9 +517,10 @@ try {
               }// if( "custom_json" == operation[0] ){
               // 포스팅과 댓글은 comment
               else if( "comment" == operation[0] ){
-
+                let tags = [];
                 if( operation[1].json_metadata ){
                   var jsonMetadata = JSON.parse( operation[1].json_metadata );
+                  tags = jsonMetadata.tags;
                   if( jsonMetadata.users ){
                     //logger.error( jsonMetadata.users );
                     //logger.error( "toSqlStr : "+toSqlArr(jsonMetadata.users) );
@@ -536,10 +537,10 @@ try {
                   }
                 }
 
+                var comment = "";
                 if( operation[1].parent_author != ""){ // 댓글만
                   var useYn = "";
                   var dvcd = "";
-                  var comment = "";
                   var cmdOption = "";
                     if( operation[1].body.contains( [ pc + "검색", epc + "search"] ) ){
                       if( operation[1].body.length > 64 ){
@@ -623,13 +624,24 @@ try {
                           comment += " 매 3시간 30분마다 받고 싶으신 경우는 `3 30 00`처럼 입력해주시면 됩니당~.";
                         }
                       }
+                    }// end mention
+                    else if( operation[1].body.contains( [ pc + "시리즈", epc + "series"] )) {
+                      comment = getSeriesComment(operation[1].author, operation[1].permlink);
+                      console.log('시리즈 결과', comment);
                     }
                     if( dvcd != "" )
                         mergeSvcAcctMng(dvcd, operation[1].author, operation[1].permlink, useYn, cmdOption);
-                    if( comment != "" ){
-                        insertWrkList( operation[1].author, operation[1].permlink, comment);
-                    }
+
                 }   // if( operation[1].parent_author != ""){ // 댓글만
+                else{
+                  const isTagSeries = (tags && tags.includes("series-bot"))
+                  if( isTagSeries ){
+                    comment = getSeriesComment(operation[1].author, operation[1].permlink);
+                  }
+                }
+                if( comment != "" ){
+                    insertWrkList( operation[1].author, operation[1].permlink, comment);
+                }
               } // else if( "comment" == operation[0] ){
             } // for operations
           } // for transactions
@@ -647,7 +659,30 @@ try {
 
 } // function blockBot(){
 
-
+function getSeriesComment(author, permlink){
+  var postInfo = getTopParentContent(author, permlink);
+  //console.log('시리즈 안내', operation[1], postInfo );
+  var contents = mecab.getContentsByTitle(steem, postInfo.author, postInfo.title );
+  //console.log('시리즈 결과', contents.word, contents.cnt , contents.contents );
+  let comment;
+  if( contents && contents.contents && contents.contents.length > 0 ){
+    comment = postInfo.author+"님의 글 검색 결과 '" +  contents.word + "' 시리즈가 총 "+ (contents.cnt+1) +"건 검색되었습니다. <br />"+nl+nl;
+    comment += "|"+nl;
+    comment += "--|"+nl;
+    for(let i = 0; i < contents.contents.length;i++){
+      comment += "[" + contents.contents[i].title+ "](/@"+ postInfo.author +"/"+ contents.contents[i].permlink
+              + "), [[Busy용 링크]](https://busy.org/@"+postInfo.author +"/"+ contents.contents[i].permlink+") | "+nl;
+      if( i == 2000 ) {
+        comment += "과거 건까지 전부 필요하신 경우";
+        break;
+      }
+    }
+  } // end if( contents.contents.length > 0 ){
+  else{
+    comment = "아쉽게도 시리즈가 검색되지 않았네요. 관련 서비스가 이상하거나 추가 제안이 있다면 이 서비스 개발자 [@nhj12311](/@nhj12311)에게 문의해보면 좋지 않을까여? ";
+  }
+  return comment;
+}
 function wrkBot(){
   fiber(function() {
   try{
@@ -705,7 +740,7 @@ function wrkBot(){
           var secondsago = (new Date - new Date(arrAcct[0].last_vote_time + "Z")) / 1000;
           var vpow = arrAcct[0].voting_power + (10000 * secondsago / 432000);
           vpow = Math.min(vpow / 100, 100).toFixed(2);
-          var weight = 100; // 100%
+          var weight = 10; // 100%
           weight = weight * 100;
           if( vpow > 90 ){
             steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight, function(err, result) { logger.info(err, result); });

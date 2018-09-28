@@ -1,3 +1,4 @@
+require('dotenv').config();
 // init mysql!
 var db_config = {
    // 운영 모드.
@@ -12,11 +13,11 @@ var db_config = {
     },
     // 개발 모드
     dev: {
-      host: '127.0.0.1',
-      port: '3306',
-      user: 'steem_nhj',
-      password: 'steem_nhj',
-      database: 'steem_nhj',
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE,
       connectionLimit:20,
       waitForConnections:false
     }
@@ -28,6 +29,8 @@ if( process.env.NODE_ENV == 'development' ){
 }else{
   db_config = db_config.prod;
 }
+
+//console.log(db_config);
 
 const mysql = require('mysql'); // mysql lib load.
 // mysql create connection!!
@@ -64,13 +67,10 @@ var moment = require('moment');
 
 fiber(function() {
   var result = query("select * from mention");
+  console.log('result : ', result);
   console.log(result[0].reg_dttm);
   var reg_dttm = moment(result[0].reg_dttm).format("YYYY-MM-DD");
-
   var reg_tm = moment(result[0].reg_dttm).format("HH:mm");
   console.log(reg_tm);
-
-
   pool.end();
-
 });
