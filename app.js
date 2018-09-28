@@ -742,7 +742,12 @@ function wrkBot(){
           vpow = Math.min(vpow / 100, 100).toFixed(2);
           var weight = 17; // 100%
           weight = weight * 100;
-          if( vpow > 90 ){
+
+          var post = await(steem.api.getContent(parentAuthor, parentPermlink, defer()));
+          var created = new Date(post.created)
+          var beforeDate = new Date();
+          beforeDate.setDate( beforeDate.getDate() -5 );
+          if( vpow > 90 && beforeDate <  created ){
             steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight, function(err, result) { logger.info(err, result); });
           }
         }
