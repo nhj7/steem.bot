@@ -740,7 +740,7 @@ function wrkBot(){
           var secondsago = (new Date - new Date(arrAcct[0].last_vote_time + "Z")) / 1000;
           var vpow = arrAcct[0].voting_power + (10000 * secondsago / 432000);
           vpow = Math.min(vpow / 100, 100).toFixed(2);
-          var weight = 10; // 100%
+          var weight = 17; // 100%
           weight = weight * 100;
           if( vpow > 90 ){
             steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight, function(err, result) { logger.info(err, result); });
