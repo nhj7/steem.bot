@@ -747,7 +747,13 @@ function wrkBot(){
           var created = new Date(post.created)
           var beforeDate = new Date();
           beforeDate.setDate( beforeDate.getDate() -5 );
-          if( vpow > 90 && beforeDate <  created ){
+          var isVote = false;
+          for(var idxVote = 0; idxVote < post.active_votes;idxVote++){
+            if(botList[i].id == post.active_votes[idxVote].voter) {
+              isVote = true; break;
+            }
+          }
+          if( vpow > 90 && beforeDate <  created && !isVote ){
             steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight, function(err, result) { logger.info(err, result); });
           }
         }

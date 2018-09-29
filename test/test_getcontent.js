@@ -2,8 +2,8 @@ var steem = require("./test_steem.js")();
 var marked = require('marked');
 var showdown = require('showdown');
 var markdown = require('markdown').markdown;
-var author = 'steem.apps3'
-var permlink = 're-steemapps3-3lnaxo-20180925t134214661z'
+var author = 'maikuraki'
+var permlink = 'gb5dn'
 
 var converter = new showdown.Converter();
 
