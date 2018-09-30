@@ -671,7 +671,8 @@ function getSeriesComment(author, permlink){
     comment += "--|"+nl;
     for(let i = 0; i < contents.contents.length;i++){
       comment += "[" + contents.contents[i].title+ "](/@"+ postInfo.author +"/"+ contents.contents[i].permlink
-              + "), [[Busy용 링크]](https://busy.org/@"+postInfo.author +"/"+ contents.contents[i].permlink+") | "+nl;
+              + "), [[Busy 링크]](https://busy.org/@"+postInfo.author +"/"+ contents.contents[i].permlink+") "+
+              (postInfo.permlink == contents.contents[i].permlink ? "<div class='phishy'>(현재글)</div>":"")+"| "+nl;
       if( i == 2000 ) {
         comment += "과거 건까지 전부 필요하신 경우";
         break;
@@ -740,7 +741,7 @@ function wrkBot(){
           var secondsago = (new Date - new Date(arrAcct[0].last_vote_time + "Z")) / 1000;
           var vpow = arrAcct[0].voting_power + (10000 * secondsago / 432000);
           vpow = Math.min(vpow / 100, 100).toFixed(2);
-          var weight = 25; // 100%
+          var weight = vpow>99?50:25; // 100%
           weight = weight * 100;
 
           var post = await(steem.api.getContent(parentAuthor, parentPermlink, defer()));
