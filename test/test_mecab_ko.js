@@ -126,7 +126,7 @@ var result =
 //getContentsByTitle('keepit', 'KEEP!T Column: 실생활 속 블록체인 (3) -');
 //getContentsByTitle('tanama', '[daily] 2018년 9월 22일');
 
-getContentsByTitle('wonsama', '[해스알] @yoshiko : 리뷰 biteaway 를 아시나요 ?');
+getContentsByTitle('anpigon', '파이썬 머신러닝 #3 - 스팀잇 아이디로 성별  예측하기');
 
 //getContentsByTitle('ayogom', '[ 하생시 ] 18.09.22 나의.');
 
