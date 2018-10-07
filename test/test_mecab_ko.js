@@ -4,6 +4,8 @@ var await = sync.await;
 var defer = sync.defer;
 var mecab = require('mecab-ya');
 
+
+
 function pos(text){
     var result = await(mecab.pos(text, defer()));
     return result;
@@ -118,37 +120,13 @@ function getContentsByTitle(author, title){
   return currentGroup[0];
 }
 
+var mecab2 = require("../util/mecab_ko.js");
+
 fiber(function() {
 
-var result =
 
-//getContentsByTitle('forhappywomen', '임·준·출 20화 - 20화에는 뭘할까요??')
-//getContentsByTitle('keepit', 'KEEP!T Column: 실생활 속 블록체인 (3) -');
-//getContentsByTitle('tanama', '[daily] 2018년 9월 22일');
 
-getContentsByTitle('anpigon', '파이썬 머신러닝 #3 - 스팀잇 아이디로 성별  예측하기');
-
-//getContentsByTitle('ayogom', '[ 하생시 ] 18.09.22 나의.');
-
-//getContentsByTitle('zinasura', '창세기전3 파트2 영혼의 검 14화');
-
-//getContentsByTitle('yoon', '[부동산이야기] 대체 집값은 언제까지 오르는걸까?')
-
-//getContentsByTitle('jjy', 'steem essay @jjy의 샘이 깊은 물 - 맛나는 점심.')
-
-//getContentsByTitle('khaiyoui', '[카일의 수다#100]나도 북스팀7 - 아침이 온다 (츠지무라 미즈키)')
-
-//getContentsByTitle('clayop', '[토큰 이코노미 풀어내기] 10. 워킹 모델')
-
-//getContentsByTitle('kyslmate', '[동화] 아웃렛 (8th.)')
-
-//getContentsByTitle('nhj12311', '[개발] 스팀잇 본문 마크다운 뷰어 만들기 #1 - 태그와 멘션에 링크 걸기.')
-//getContentsByTitle('keepit', 'KEEP!T 블록체인 뉴스: 9/24 - 비트코인 코어 - 심각한 네트워크 충돌 취약성, 석유 대기업과 메이저 은행 - 이더리움 블록체인 활용')
-if( result ){
-  console.log('result : ', result['word'], result['contents']);
-  console.log('result : ', result.word, result.contents);
-}else{
-  console.log('result 0');
-}
+var contents = mecab2.getContentsByTitle(steem, 'yong2daddy', '[Think] - 미루기는 미래의 자양분?!' );
+console.error('시리즈 결과' , contents );
 
 }); // end fiber..

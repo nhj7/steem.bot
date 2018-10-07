@@ -661,23 +661,38 @@ try {
 
 function getSeriesComment(author, permlink){
   var postInfo = getTopParentContent(author, permlink);
-  //console.log('시리즈 안내', operation[1], postInfo );
+  //logger.error('시리즈 안내', permlink, postInfo.author, postInfo.title );
   var contents = mecab.getContentsByTitle(steem, postInfo.author, postInfo.title );
-  //console.log('시리즈 결과', contents.word, contents.cnt , contents.contents );
+  //logger.error('시리즈 결과' , contents );
   let comment;
+
   if( contents && contents.contents && contents.contents.length > 0 ){
-    comment = postInfo.author+"님의 글 검색 결과 '" +  contents.word + "' 시리즈가 총 "+ (contents.cnt+1) +"건 검색되었습니다. <br />"+nl+nl;
-    comment += "|"+nl;
-    comment += "--|"+nl;
+    comment = postInfo.author+"님의 글 검색 결과 '" +  contents.word + "' 시리즈가 총 "+ (contents.cnt+1) +"건 검색되었습니다. <br />"+nl;
+
+    let listStr;
+    listStr += "|"+nl;
+    listStr += "--|"+nl;
+
+    let idxCur = 0;
     for(let i = 0; i < contents.contents.length;i++){
-      comment += "[" + contents.contents[i].title+ "](/@"+ postInfo.author +"/"+ contents.contents[i].permlink
+      if( postInfo.permlink == contents.contents[i].permlink ) idxCur = i;
+      listStr += "<sup>[" + contents.contents[i].title+ "](/@"+ postInfo.author +"/"+ contents.contents[i].permlink
               + "), [[Busy 링크]](https://busy.org/@"+postInfo.author +"/"+ contents.contents[i].permlink+") "+
-              (postInfo.permlink == contents.contents[i].permlink ? "<div class='phishy'>(현재글)</div>":"")+"| "+nl;
+              (postInfo.permlink == contents.contents[i].permlink ? "<div class='phishy'>(현재글)</div>":"")+"</sup>| "+nl;
       if( i == 2000 ) {
-        comment += "과거 건까지 전부 필요하신 경우";
+        listStr += "과거 건까지 전부 필요하신 경우";
         break;
       }
+    } // end for
+
+    if( idxCur > 0 ){
+      comment += '이전 글 : [' + contents.contents[ idxCur - 1] + '](/@'+postInfo.author+'/'+contents.contents[idxCur - 1].permlink+')' + nl ;
     }
+    if( idxCur < contents.contents.length-1 ){
+      comment += '다음 글 : [' + contents.contents[ idxCur + 1] + '](/@'+postInfo.author+'/'+contents.contents[idxCur + 1].permlink+')' + nl ;
+    }
+    comment += nl + listStr;
+
   } // end if( contents.contents.length > 0 ){
   else{
     comment = "아쉽게도 시리즈가 검색되지 않았네요. 관련 서비스가 이상하거나 추가 제안이 있다면 이 서비스 개발자 [@nhj12311](/@nhj12311)에게 문의해보면 좋지 않을까여? ";

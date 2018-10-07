@@ -31,7 +31,7 @@ function getGroup(contents, arr, idx, titleMecab){
     if( idxHas == -1 ){
       arrWord[arrIdx] = joinWord;
       arrGroup[arrIdx++] = {
-        word : joinWord
+        word : getSeriesTitle(contents[i].title, joinWord, ' ')
         , class : ''
         , cnt : 0
         , contents : [{
@@ -52,6 +52,22 @@ function getGroup(contents, arr, idx, titleMecab){
   }
   return arrGroup;
 }
+
+function getSeriesTitle(org, trg, chr ){
+  let _trgIdx = 0;
+  let _orgIdx = 0;
+  for( ; _orgIdx < org.length; _orgIdx++){
+    if(org[_orgIdx] == chr ) continue;
+    if( org[_orgIdx] != trg[_trgIdx++] ) {
+      break;
+    }
+  }
+  let st = org.substring(0, _orgIdx).trim();
+  if(['-', '#', ',' , '!', '@', '%', ':', '*', '(', '=', '+'].includes( st.substring(st.length - 1, st.length )))
+    st = st.substring(0, st.length - 1).trim();
+  return st;
+}
+
 
 exports.getContentsByTitle = function (steem, author, title){
   let permlink = null;
@@ -79,16 +95,11 @@ exports.getContentsByTitle = function (steem, author, title){
   let isContinue = false;
   do{
     let arrGroup = getGroup(contents, arrMecab, idxTitle, titleMecab)
-
     //console.log( idxTitle,"two." ,arrGroup );
     if(arrGroup.length > 0 && arrGroup[0].cnt > 0){
       isContinue = true;
       idxTitle++;
-
-      if( ( titleMecab[idxTitle] && titleMecab[idxTitle].length > 1 )
-          || ( currentGroup[0] && arrGroup[0] && currentGroup[0].contents && arrGroup[0].contents && currentGroup[0].contents.length == arrGroup[0].contents.length ) ){
-        currentGroup = arrGroup
-      }
+      currentGroup = arrGroup
     }else{
       isContinue = false;
     }
@@ -96,6 +107,8 @@ exports.getContentsByTitle = function (steem, author, title){
     //console.log( idxTitle, arrGroup );
 
   }while(isContinue)
+
+  //console.log(currentGroup);
   if( currentGroup[0] && currentGroup[0]['contents'] && currentGroup[0].contents.length > 0){
     currentGroup[0].contents.sort(function(a, b){
       var a_date = new Date(a.created);
@@ -109,7 +122,6 @@ exports.getContentsByTitle = function (steem, author, title){
       }
     });
   }
-
     //.log("currentGroup : ", currentGroup);
   //}); // end fiber..
   return currentGroup[0];

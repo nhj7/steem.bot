@@ -30,7 +30,7 @@ function getContentsByTagToday( tag ){
     for(let i = 0; i < contents.length;i++){
       var created = new Date(contents[i].created);
       //console.log(i, created.yyyymmdd());
-      if( toDay.yyyymmdd() == created.yyyymmdd() ){
+      if( parseInt(toDay.yyyymmdd())-1 <= parseInt(created.yyyymmdd()) ){
         result.push(contents[i]);
         start_author = contents[i].author
         start_permlink = contents[i].permlink
