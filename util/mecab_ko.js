@@ -74,6 +74,7 @@ exports.getContentsByTitle = function (steem, author, title){
   let result;
   let contents = [];
   let currentGroup = [];
+  let histGroup = [];
   //fiber(function() {
   do{
       result = await(steem.api.getDiscussionsByAuthorBeforeDate(author, permlink, '2100-01-01T00:00:00', 100, defer()));
@@ -96,6 +97,7 @@ exports.getContentsByTitle = function (steem, author, title){
   do{
     let arrGroup = getGroup(contents, arrMecab, idxTitle, titleMecab)
     //console.log( idxTitle,"two." ,arrGroup );
+    histGroup[idxTitle] = arrGroup;
     if(arrGroup.length > 0 && arrGroup[0].cnt > 0){
       isContinue = true;
       idxTitle++;
@@ -103,7 +105,7 @@ exports.getContentsByTitle = function (steem, author, title){
     }else{
       isContinue = false;
     }
-    if( idxTitle > 8) isContinue = false;
+    if( idxTitle > 6) isContinue = false;
     //console.log( idxTitle, arrGroup );
 
   }while(isContinue)

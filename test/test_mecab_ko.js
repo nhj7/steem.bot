@@ -126,7 +126,7 @@ fiber(function() {
 
 
 
-var contents = mecab2.getContentsByTitle(steem, 'yong2daddy', '[Think] - 미루기는 미래의 자양분?!' );
+var contents = mecab2.getContentsByTitle(steem, 'nhj12311', '[개발] Node & Steem #11 - 글 아카이브 기능으로서의 첫 걸음. 포스팅 분류하기.' );
 console.error('시리즈 결과' , contents );
 
 }); // end fiber..

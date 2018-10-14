@@ -686,10 +686,10 @@ function getSeriesComment(author, permlink){
     } // end for
 
     if( idxCur > 0 ){
-      comment += '이전 글 : [' + contents.contents[ idxCur - 1] + '](/@'+postInfo.author+'/'+contents.contents[idxCur - 1].permlink+')' + nl ;
+      comment += '이전 글 : [' + contents.contents[ idxCur - 1].title + '](/@'+postInfo.author+'/'+contents.contents[idxCur - 1].permlink+')' + nl ;
     }
     if( idxCur < contents.contents.length-1 ){
-      comment += '다음 글 : [' + contents.contents[ idxCur + 1] + '](/@'+postInfo.author+'/'+contents.contents[idxCur + 1].permlink+')' + nl ;
+      comment += '다음 글 : [' + contents.contents[ idxCur + 1].title + '](/@'+postInfo.author+'/'+contents.contents[idxCur + 1].permlink+')' + nl ;
     }
     comment += nl + listStr;
 
@@ -756,7 +756,7 @@ function wrkBot(){
           var secondsago = (new Date - new Date(arrAcct[0].last_vote_time + "Z")) / 1000;
           var vpow = arrAcct[0].voting_power + (10000 * secondsago / 432000);
           vpow = Math.min(vpow / 100, 100).toFixed(2);
-          var weight = vpow>99?50:25; // 100%
+          var weight = vpow>95?50:25; // 100%
           weight = weight * 100;
 
           var post = await(steem.api.getContent(parentAuthor, parentPermlink, defer()));
