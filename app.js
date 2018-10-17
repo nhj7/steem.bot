@@ -764,7 +764,7 @@ function wrkBot(){
           var beforeDate = new Date();
           beforeDate.setDate( beforeDate.getDate() -5 );
           var isVote = false;
-          for(var idxVote = 0; idxVote < post.active_votes;idxVote++){
+          for(var idxVote = 0; idxVote < post.active_votes.length ;idxVote++){
             if(botList[i].id == post.active_votes[idxVote].voter) {
               isVote = true; break;
             }
