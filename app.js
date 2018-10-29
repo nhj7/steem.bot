@@ -720,7 +720,7 @@ function wrkBot(){
         var selBotQry = "select * from bot_acct_mng "
           + " where 1=1 "
           + " and instr(arr_dvcd, ?) > 0 "
-          + " and last_comment_dttm < DATE_ADD(now(), INTERVAL -20 second) "
+          + " and last_comment_dttm < DATE_ADD(now(), INTERVAL - 7 second) "
           + " order by last_comment_dttm asc ";
 
         var botList = (query(selBotQry, [1] ));
@@ -772,9 +772,9 @@ function wrkBot(){
           if( vpow > 90 && beforeDate <  created && !isVote ){
             let self_weight = weight * 0.4;
             steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight - self_weight ,function(err, result) {
-              logger.info(err, result);
+              logger.info('vote1!', err, result);
               setTimeout(
-                  function(){steem.broadcast.vote(wif, botList[i].id, author, permlink, self_weight, function(err1, result1) { logger.info(err1, result1); })}
+                  function(){steem.broadcast.vote(wif, botList[i].id, author, permlink, self_weight, function(err1, result1) { logger.info('vote2!', err1, result1); })}
               , 3500);
 
             });
