@@ -771,8 +771,7 @@ function wrkBot(){
           }
           if( vpow > 90 && beforeDate <  created && !isVote ){
             let self_weight = weight * 0.4;
-
-            var votRslt = await(steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight - self_weight, defer() );
+            var votRslt = await(steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight - self_weight, defer() ));
             logger.info('vote1!', votRslt);
             sleep(3500);
             try{
