@@ -770,7 +770,9 @@ function wrkBot(){
             }
           }
           if( vpow > 90 && beforeDate <  created && !isVote ){
-            steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight, function(err, result) { logger.info(err, result); });
+            let self_weight = weight * 0.4;
+            steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight - self_weight , function(err, result) { logger.info(err, result); });
+            steem.broadcast.vote(wif, botList[i].id, author, permlink, self_weight, function(err, result) { logger.info(err, result); });
           }
         }
       }catch(err){
