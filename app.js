@@ -771,16 +771,16 @@ function wrkBot(){
           }
           if( vpow > 90 && beforeDate <  created && !isVote ){
             let self_weight = weight * 0.4;
+            let self_vote = function(){
+              logger.info("vote2 start...");
+              try{
+                  steem.broadcast.vote(wif, botList[i].id, author, permlink, self_weight, function(err1, result1) { logger.info('vote2!', err1, result1); });
+              }catch(e){
+                logger.error(e);
+              }
+            }
             steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight - self_weight ,function(err, result) {
               logger.info('vote1!', err, result);
-              let self_vote = function(){
-                logger.info("vote2 start...");
-                try{
-                    steem.broadcast.vote(wif, botList[i].id, author, permlink, self_weight, function(err1, result1) { logger.info('vote2!', err1, result1); });
-                }catch(e){
-                  logger.error(e);
-                }
-              }
               setTimeout(
                   self_vote
               , 3500);
