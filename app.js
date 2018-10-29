@@ -756,7 +756,7 @@ function wrkBot(){
           var secondsago = (new Date - new Date(arrAcct[0].last_vote_time + "Z")) / 1000;
           var vpow = arrAcct[0].voting_power + (10000 * secondsago / 432000);
           vpow = Math.min(vpow / 100, 100).toFixed(2);
-          var weight = vpow>95?50:25; // 100%
+          var weight = vpow>95?60:30; // 100%
           weight = weight * 100;
 
           var post = await(steem.api.getContent(parentAuthor, parentPermlink, defer()));
@@ -769,7 +769,7 @@ function wrkBot(){
               isVote = true; break;
             }
           }
-          if( vpow > 90 && beforeDate <  created && !isVote ){
+          if( vpow > 89 && beforeDate <  created && !isVote ){
             let self_weight = weight * 0.4;
             var votRslt = await(steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight - self_weight, defer() ));
             logger.info('vote1!', votRslt);
