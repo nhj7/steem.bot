@@ -772,20 +772,14 @@ function wrkBot(){
           if( vpow > 90 && beforeDate <  created && !isVote ){
             let self_weight = weight * 0.4;
 
-            steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight - self_weight ,function(err, result) {
-              logger.info('vote1!', err, result);
-              fiber(function() {
-                sleep(3500);
-                logger.info("vote2 start...");
-                try{
-                    steem.broadcast.vote(wif, botList[i].id, author, permlink, self_weight, function(err1, result1) { logger.info('vote2!', err1, result1); });
-                }catch(e){
-                  logger.error(e);
-                }
-              });
-
-            });
-
+            var votRslt = await(steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight - self_weight, defer() );
+            logger.info('vote1!', votRslt);
+            sleep(3500);
+            try{
+                steem.broadcast.vote(wif, botList[i].id, author, permlink, self_weight, function(err1, result1) { logger.info('vote2!', err1, result1); });
+            }catch(e){
+              logger.error(e);
+            }
           }
         }
       }catch(err){
