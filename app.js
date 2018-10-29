@@ -773,7 +773,10 @@ function wrkBot(){
             let self_weight = weight * 0.4;
             steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight - self_weight ,function(err, result) {
               logger.info(err, result);
-              steem.broadcast.vote(wif, botList[i].id, author, permlink, self_weight, function(err1, result1) { logger.info(err1, result1); });
+              setTimeout(
+                  function(){steem.broadcast.vote(wif, botList[i].id, author, permlink, self_weight, function(err1, result1) { logger.info(err1, result1); })}
+              , 3500);
+
             });
 
           }
