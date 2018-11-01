@@ -720,7 +720,7 @@ function wrkBot(){
         var selBotQry = "select * from bot_acct_mng "
           + " where 1=1 "
           + " and instr(arr_dvcd, ?) > 0 "
-          + " and last_comment_dttm < DATE_ADD(now(), INTERVAL - 7 second) "
+          + " and last_comment_dttm < DATE_ADD(now(), INTERVAL - 20 second) "
           + " order by last_comment_dttm asc ";
 
         var botList = (query(selBotQry, [1] ));
