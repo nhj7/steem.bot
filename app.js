@@ -517,6 +517,9 @@ try {
               }// if( "custom_json" == operation[0] ){
               // 포스팅과 댓글은 comment
               else if( "comment" == operation[0] ){
+                if( ['boddhisattva','t3ran13'].includes( operation[1].author ) ){
+                  continue;
+                }
                 let tags = [];
                 if( operation[1].json_metadata ){
                   var jsonMetadata = JSON.parse( operation[1].json_metadata );
@@ -770,7 +773,7 @@ function wrkBot(){
             }
           }
           if( vpow > 84 && beforeDate <  created && !isVote ){
-            let self_weight = weight * 0.4;
+            let self_weight = weight * 0.5;
             var votRslt = await(steem.broadcast.vote(wif, botList[i].id, parentAuthor, parentPermlink, weight - self_weight, defer() ));
             logger.info('vote1!', votRslt);
             sleep(3500);
