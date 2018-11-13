@@ -517,7 +517,7 @@ try {
               }// if( "custom_json" == operation[0] ){
               // 포스팅과 댓글은 comment
               else if( "comment" == operation[0] ){
-                if( ['boddhisattva','t3ran13'].includes( operation[1].author ) ){
+                if( ['boddhisattva','t3ran13','boddhistats'].includes( operation[1].author ) ){
                   continue;
                 }
                 let tags = [];
