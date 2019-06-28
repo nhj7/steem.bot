@@ -33,6 +33,8 @@
 
 'boddhisattva','t3ran13','boddhistats', 'miti', 'actifit', 'nathanmars', 'sbi10'
 
+'19.06.29 sbi-booster 추가
+
 
 
 [steemit blog @nhj12311](https://steemit.com/@nhj12311)
