@@ -517,7 +517,8 @@ try {
               }// if( "custom_json" == operation[0] ){
               // 포스팅과 댓글은 comment
               else if( "comment" == operation[0] ){
-                if( ['boddhisattva','t3ran13','boddhistats', 'miti', 'actifit', 'nathanmars', 'sbi10'].includes( operation[1].author ) ){
+                // blacklist
+                if( ['boddhisattva','t3ran13','boddhistats', 'miti', 'actifit', 'nathanmars', 'sbi10', 'sbi-booster'].includes( operation[1].author ) ){
                   continue;
                 }
                 let tags = [];
