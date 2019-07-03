@@ -239,7 +239,7 @@ function inqryGoogle( query ){
           , permlink : permlink
           , title : title
           , st : st
-          , avatar : "https://steemitimages.com/u/"+hrefSplit1[5].substring(1)+"/avatar/small"
+          , avatar : "https://steemitimages.com/u/"+hrefSplit1[5].substring(1)+"/avatar"
         };
         items.push(item);
     }); // $('.g').each(function(idx){
