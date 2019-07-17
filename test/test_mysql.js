@@ -23,9 +23,13 @@ var db_config = {
     }
 };
 
+console.log(process.env.NODE_ENV)
+
 // 설정된 환경으로 config 적용.
 if( process.env.NODE_ENV == 'development' ){
+  
   db_config = db_config.dev;
+  console.log("dev config.", db_config)
 }else{
   db_config = db_config.prod;
 }
@@ -66,11 +70,11 @@ function query(sql, params){
 var moment = require('moment');
 
 fiber(function() {
-  var result = query("select * from mention");
+  var result = query("select 1 as no");
   console.log('result : ', result);
-  console.log(result[0].reg_dttm);
-  var reg_dttm = moment(result[0].reg_dttm).format("YYYY-MM-DD");
-  var reg_tm = moment(result[0].reg_dttm).format("HH:mm");
-  console.log(reg_tm);
+  console.log(result[0]);
+  //var reg_dttm = moment(result[0].reg_dttm).format("YYYY-MM-DD");
+  //var reg_tm = moment(result[0].reg_dttm).format("HH:mm");
+  //console.log(reg_tm);
   pool.end();
 });

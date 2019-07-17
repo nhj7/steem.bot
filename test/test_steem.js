@@ -1,6 +1,5 @@
 var steem = require("steem");
 const arrNode = [
-  'https://api.steemitstage.com',
   'https://api.steemit.com',
   'https://steemd.dist.one',
 
